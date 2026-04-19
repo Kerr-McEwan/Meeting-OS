@@ -123,6 +123,7 @@ interface HorizontalViewProps {
   setSelected: (s: SelectedCell | null) => void;
   cellStyle: TweaksSettings['cellStyle'];
   onAddAgenda: (item: string, sectionId: string) => void;
+  onAddMeeting: (date: string) => Promise<Meeting | null>;
 }
 
 export function HorizontalView({
@@ -137,11 +138,28 @@ export function HorizontalView({
   setSelected,
   cellStyle,
   onAddAgenda,
+  onAddMeeting,
 }: HorizontalViewProps) {
   const [hover, setHover] = useState<null | { aId: string; mId: string; x: number; y: number }>(null);
   const [adding, setAdding] = useState(false);
   const [newItemText, setNewItemText] = useState('');
   const [newItemSection, setNewItemSection] = useState(sections[0]?.id || '');
+  const [addingMeeting, setAddingMeeting] = useState(false);
+  const [newMeetingDate, setNewMeetingDate] = useState<string>(() => {
+    const last = meetings[meetings.length - 1];
+    const base = last ? new Date(last.meeting_date + 'T00:00:00') : new Date();
+    base.setDate(base.getDate() + 7);
+    return base.toISOString().slice(0, 10);
+  });
+  const [creatingMeeting, setCreatingMeeting] = useState(false);
+
+  const submitNewMeeting = async () => {
+    if (!newMeetingDate || creatingMeeting) return;
+    setCreatingMeeting(true);
+    await onAddMeeting(newMeetingDate);
+    setCreatingMeeting(false);
+    setAddingMeeting(false);
+  };
 
   const cellOf = (aId: string, mId: string) =>
     cells.find((c) => c.agenda_item_id === aId && c.meeting_id === mId);
@@ -189,7 +207,42 @@ export function HorizontalView({
             Each meeting has 3 tracks: Notes · Decisions · Actions
           </span>
           <button className="btn sm ghost"><Icon name="filter" className="ic sm" /> Filter</button>
-          <button className="btn sm primary"><Icon name="calendar" className="ic sm" /> New meeting</button>
+          {addingMeeting ? (
+            <span className="new-meeting-form">
+              <input
+                type="date"
+                className="field-input sm"
+                value={newMeetingDate}
+                onChange={(e) => setNewMeetingDate(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') submitNewMeeting();
+                  if (e.key === 'Escape') setAddingMeeting(false);
+                }}
+                autoFocus
+              />
+              <button
+                className="btn sm primary"
+                onClick={submitNewMeeting}
+                disabled={!newMeetingDate || creatingMeeting}
+              >
+                {creatingMeeting ? 'Creating…' : 'Create'}
+              </button>
+              <button
+                className="btn sm ghost"
+                onClick={() => setAddingMeeting(false)}
+                disabled={creatingMeeting}
+              >
+                Cancel
+              </button>
+            </span>
+          ) : (
+            <button
+              className="btn sm primary"
+              onClick={() => setAddingMeeting(true)}
+            >
+              <Icon name="calendar" className="ic sm" /> New meeting
+            </button>
+          )}
         </div>
         <div className="pivot-scroll">
           <table className="pivot tri">

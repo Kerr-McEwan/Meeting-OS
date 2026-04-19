@@ -272,6 +272,59 @@ export function AppShell({
     if (!error && data) setAgenda((prev) => [...prev, data as AgendaItem]);
   };
 
+  const onAddMeeting = async (dateISO: string) => {
+    // Auto-label: "DD Mon" (e.g. "27 Apr"), matching the seed format.
+    const d = new Date(dateISO + 'T00:00:00');
+    const label = `${d.getDate()} ${d.toLocaleDateString('en-GB', { month: 'short' })}`;
+    const todayStart = startOfToday();
+    const isUpcoming = d >= todayStart;
+
+    const row = {
+      series_id: seriesId,
+      meeting_date: dateISO,
+      label,
+      upcoming: isUpcoming,
+    };
+    const { data: inserted, error } = await supabase
+      .from('meetings')
+      .insert(row)
+      .select()
+      .single();
+    if (error || !inserted) {
+      console.error('[onAddMeeting]', error);
+      return null;
+    }
+
+    // If the new meeting is upcoming, un-flag any prior upcoming meetings in
+    // this series so only one "Upcoming" badge shows at a time.
+    if (isUpcoming) {
+      const priorUpcoming = meetings.filter(
+        (m) => m.series_id === seriesId && m.upcoming && m.id !== inserted.id,
+      );
+      if (priorUpcoming.length > 0) {
+        await supabase
+          .from('meetings')
+          .update({ upcoming: false })
+          .in('id', priorUpcoming.map((m) => m.id));
+      }
+    }
+
+    const newMeeting: Meeting = {
+      ...(inserted as Meeting),
+      attendees: [],
+      apologies: [],
+    };
+    setMeetings((prev) => {
+      const cleaned = isUpcoming
+        ? prev.map((m) => (m.series_id === seriesId ? { ...m, upcoming: false } : m))
+        : prev;
+      return [...cleaned, newMeeting].sort((a, b) =>
+        a.meeting_date.localeCompare(b.meeting_date),
+      );
+    });
+    return newMeeting;
+  };
+
   const onCreateSeries = async (input: NewSeriesInput) => {
     const { data: seriesRow, error: seriesErr } = await supabase
       .from('meeting_series')
@@ -370,6 +423,7 @@ export function AppShell({
               setSelected={setSelected}
               cellStyle={settings.cellStyle}
               onAddAgenda={onAddAgenda}
+              onAddMeeting={onAddMeeting}
             />
           )}
           {page === 'actions' && (
