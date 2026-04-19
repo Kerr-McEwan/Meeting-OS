@@ -1,0 +1,130 @@
+// Shared types for the Meeting OS UI. Keep these in sync with the SQL schema.
+
+export type CellStatus =
+  | 'done'
+  | 'carry'
+  | 'to_action'
+  | 'in_progress'
+  | 'stuck'
+  | 'closed';
+
+export type ActionStatus = 'to_action' | 'in_progress' | 'stuck' | 'done' | 'closed';
+export type ActionPriority = 'low' | 'medium' | 'high';
+
+export interface Profile {
+  id: string;
+  email: string;
+  full_name: string | null;
+  initials: string | null;
+  role: string | null;
+  color: string | null;
+}
+
+export interface TeamMember {
+  id: string;
+  name: string;
+  role: string;
+  initials: string;
+  color: string;
+}
+
+export interface Section {
+  id: string;
+  series_id: string;
+  slug: string;
+  name: string;
+  color: string;
+  sort_order: number;
+}
+
+export interface AgendaItem {
+  id: string;
+  series_id: string;
+  section_id: string | null;
+  item: string;
+  sort_order: number;
+}
+
+export interface Meeting {
+  id: string;
+  series_id: string;
+  meeting_date: string;
+  label: string | null;
+  chair_id: string | null;
+  upcoming: boolean;
+  attendees: string[];
+  apologies: string[];
+}
+
+export interface Cell {
+  id: string;
+  agenda_item_id: string;
+  meeting_id: string;
+  notes: string;
+  status: CellStatus;
+}
+
+export interface Decision {
+  id: string;
+  series_id: string;
+  meeting_id: string;
+  agenda_item_id: string | null;
+  section_id: string | null;
+  owner_id: string | null;
+  text: string;
+  created_at: string;
+}
+
+export interface Action {
+  id: string;
+  series_id: string;
+  meeting_id: string | null;
+  agenda_item_id: string | null;
+  owner_id: string | null;
+  title: string;
+  due_date: string | null;
+  status: ActionStatus;
+  priority: ActionPriority;
+  raised_date: string;
+}
+
+export interface MeetingSeries {
+  id: string;
+  slug: string;
+  name: string;
+  cadence: string | null;
+  description: string | null;
+  color_accent: string | null;
+}
+
+export interface InitialData {
+  team: TeamMember[];
+  series: MeetingSeries[];
+  currentSeriesId: string;
+  sections: Section[];
+  agenda: AgendaItem[];
+  meetings: Meeting[];
+  cells: Cell[];
+  actions: Action[];
+  decisions: Decision[];
+}
+
+export type Page = 'horizontal' | 'actions' | 'decisions';
+
+export interface TweaksSettings {
+  theme: 'light' | 'dark';
+  density: 'compact' | 'comfy' | 'spacious';
+  typography: 'sans' | 'serif' | 'mono';
+  cellStyle: 'text' | 'pills' | 'dots';
+  stats: 'show' | 'hide';
+  accent: 'amber' | 'rose' | 'indigo' | 'teal' | 'graphite';
+}
+
+export const DEFAULT_TWEAKS: TweaksSettings = {
+  theme: 'light',
+  density: 'compact',
+  typography: 'sans',
+  cellStyle: 'text',
+  stats: 'show',
+  accent: 'amber',
+};
