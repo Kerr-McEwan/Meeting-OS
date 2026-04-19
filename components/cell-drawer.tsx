@@ -25,6 +25,8 @@ export interface CellDrawerHandlers {
   addAction: (input: { meetingId: string; agendaItemId: string; ownerId: string; title: string; due: string | null; priority: ActionPriority }) => void;
   removeAction: (id: string) => void;
   setActionStatus: (id: string, status: ActionStatus) => void;
+  addTeamMember: (name: string) => Promise<TeamMember | null>;
+  ensureAttendee: (meetingId: string, profileId: string) => Promise<void>;
 }
 
 export function CellDrawer({
@@ -111,6 +113,7 @@ export function CellDrawer({
 
   const addDecision = () => {
     if (!newDecision.trim() || !newDecisionOwner) return;
+    void handlers.ensureAttendee(m.id, newDecisionOwner);
     handlers.addDecision({
       meetingId: m.id,
       agendaItemId: a.id,
@@ -123,6 +126,7 @@ export function CellDrawer({
 
   const addAction = () => {
     if (!newAction.trim() || !newActionOwner) return;
+    void handlers.ensureAttendee(m.id, newActionOwner);
     handlers.addAction({
       meetingId: m.id,
       agendaItemId: a.id,
@@ -137,13 +141,10 @@ export function CellDrawer({
   const section = sections.find((s) => s.id === a.section_id);
   const linkedDecisions = decisions.filter((d) => d.agenda_item_id === a.id && d.meeting_id === m.id);
   const linkedActions = actions.filter((ac) => ac.agenda_item_id === a.id && ac.meeting_id === m.id);
-  const meetingAttendees = m.attendees
-    .map((id) => personById(data.team, id))
-    .filter((x): x is TeamMember => Boolean(x));
-  // Fall back to the whole team when no attendees are set for this meeting,
-  // otherwise the assignee picker is empty and the user can't satisfy the
-  // "assignee required" constraint to log a decision or add an action.
-  const attendees = meetingAttendees.length > 0 ? meetingAttendees : data.team;
+  // Always show the full team in the assignee picker — Kerr wants zero
+  // friction to assign anything to anyone. Attendance is recorded silently
+  // when an assignment is made (see handlers.ensureAttendee).
+  const attendees = data.team;
 
   const idx = agenda.findIndex((x) => x.id === a.id);
   const prev = idx > 0 ? agenda[idx - 1] : null;
@@ -296,6 +297,7 @@ export function CellDrawer({
                       team={attendees}
                       value={newDecisionOwner}
                       onChange={setNewDecisionOwner}
+                      onAddTeammate={handlers.addTeamMember}
                     />
                   </div>
                   <button
@@ -353,7 +355,12 @@ export function CellDrawer({
                     <div className="field-mini-label">
                       Assignee <span style={{ color: 'var(--danger)' }}>*</span>
                     </div>
-                    <AssigneePicker team={attendees} value={newActionOwner} onChange={setNewActionOwner} />
+                    <AssigneePicker
+                      team={attendees}
+                      value={newActionOwner}
+                      onChange={setNewActionOwner}
+                      onAddTeammate={handlers.addTeamMember}
+                    />
                   </div>
                   <div>
                     <div className="field-mini-label">Due</div>

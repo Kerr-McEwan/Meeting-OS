@@ -25,11 +25,30 @@ export function AssigneePicker({
   team,
   value,
   onChange,
+  onAddTeammate,
 }: {
   team: TeamMember[];
   value: string | null;
   onChange: (id: string) => void;
+  onAddTeammate?: (name: string) => Promise<TeamMember | null>;
 }) {
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    const name = newName.trim();
+    if (!name || !onAddTeammate || busy) return;
+    setBusy(true);
+    const created = await onAddTeammate(name);
+    setBusy(false);
+    if (created) {
+      onChange(created.id);
+      setNewName('');
+      setAdding(false);
+    }
+  };
+
   return (
     <div className="assignee-picker">
       {team.map((p) => (
@@ -42,6 +61,50 @@ export function AssigneePicker({
         >
           <Avatar person={p} size="sm" />
           <span className="ap-name">{p.name.split(' ')[0]}</span>
+        </button>
+      ))}
+
+      {onAddTeammate && (adding ? (
+        <span className="ap-chip ap-add-form">
+          <input
+            autoFocus
+            className="ap-add-input"
+            placeholder="Name…"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') submit();
+              if (e.key === 'Escape') { setAdding(false); setNewName(''); }
+            }}
+            disabled={busy}
+          />
+          <button
+            type="button"
+            className="ap-add-go"
+            onClick={submit}
+            disabled={!newName.trim() || busy}
+            aria-label="Add teammate"
+          >
+            {busy ? '…' : '✓'}
+          </button>
+          <button
+            type="button"
+            className="ap-add-cancel"
+            onClick={() => { setAdding(false); setNewName(''); }}
+            aria-label="Cancel"
+          >
+            ×
+          </button>
+        </span>
+      ) : (
+        <button
+          type="button"
+          className="ap-chip ap-add"
+          onClick={() => setAdding(true)}
+          title="Add a new teammate"
+        >
+          <span className="ap-add-plus">+</span>
+          <span className="ap-name">Add</span>
         </button>
       ))}
     </div>

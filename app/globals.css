@@ -1066,6 +1066,53 @@ table.pivot.tri tbody td.upcoming-col { background: var(--cream); }
 }
 .ap-name { font-weight: 500; }
 
+.ap-chip.ap-add {
+  border-style: dashed;
+  color: var(--text-muted);
+  padding-left: 8px;
+}
+.ap-chip.ap-add:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.ap-add-plus {
+  display: inline-grid;
+  place-items: center;
+  width: 18px; height: 18px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+}
+.ap-chip.ap-add-form {
+  padding: 2px 4px 2px 8px;
+  gap: 2px;
+}
+.ap-add-input {
+  border: none;
+  background: transparent;
+  outline: none;
+  font: inherit;
+  color: var(--text);
+  padding: 2px 4px;
+  width: 110px;
+}
+.ap-add-go,
+.ap-add-cancel {
+  border: none;
+  background: transparent;
+  width: 22px; height: 22px;
+  border-radius: 12px;
+  display: inline-grid;
+  place-items: center;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+.ap-add-go { color: var(--accent); font-weight: 700; }
+.ap-add-go:hover:not(:disabled) { background: var(--accent-soft); }
+.ap-add-go:disabled { opacity: 0.4; cursor: default; }
+.ap-add-cancel:hover { background: var(--surface-2); color: var(--text); }
+
 .add-card {
   background: var(--bg);
   border: 1px solid var(--border);

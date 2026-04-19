@@ -63,12 +63,19 @@ export function AppShell({
   useEffect(() => { window.localStorage.setItem('mos_series', seriesId); }, [seriesId]);
   const currentSeries = seriesList.find((s) => s.id === seriesId) || seriesList[0] || null;
 
+  const [team, setTeam] = useState<TeamMember[]>(initialData.team);
   const [sections, setSections] = useState<Section[]>(initialData.sections);
   const [agenda, setAgenda] = useState<AgendaItem[]>(initialData.agenda);
-  const [meetings] = useState<Meeting[]>(initialData.meetings);
+  const [meetings, setMeetings] = useState<Meeting[]>(initialData.meetings);
   const [cells, setCells] = useState<Cell[]>(initialData.cells);
   const [actions, setActions] = useState<Action[]>(initialData.actions);
   const [decisions, setDecisions] = useState<Decision[]>(initialData.decisions);
+
+  // Live data prop — child components read team/series/etc. from here.
+  const data = useMemo<InitialData>(
+    () => ({ ...initialData, team, series: seriesList, sections, agenda, meetings, cells, actions, decisions }),
+    [initialData, team, seriesList, sections, agenda, meetings, cells, actions, decisions],
+  );
 
   const [selected, setSelected] = useState<SelectedCell | null>(null);
   const [newSeriesOpen, setNewSeriesOpen] = useState(false);
@@ -210,6 +217,52 @@ export function AppShell({
       setActions((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)));
       await supabase.from('actions').update({ status }).eq('id', id);
     },
+
+    addTeamMember: async (rawName: string) => {
+      const name = rawName.trim();
+      if (!name) return null;
+      const initials = (() => {
+        const parts = name.split(/\s+/);
+        return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || name.slice(0, 2).toUpperCase();
+      })();
+      // Deterministic-ish hue per name so avatar colours are stable.
+      let hash = 0;
+      for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+      const color = `oklch(0.70 0.10 ${hash % 360})`;
+
+      const id = crypto.randomUUID();
+      const row = { id, full_name: name, initials, color, is_guest: true, email: null };
+      const { data, error } = await supabase.from('profiles').insert(row).select().single();
+      if (error || !data) {
+        console.error('[addTeamMember]', error);
+        return null;
+      }
+      const member: TeamMember = {
+        id: data.id,
+        name: data.full_name || name,
+        role: data.role || 'Guest',
+        initials: data.initials || initials,
+        color: data.color || color,
+      };
+      setTeam((prev) => [...prev, member]);
+      return member;
+    },
+
+    ensureAttendee: async (meetingId: string, profileId: string) => {
+      // Update local state first so subsequent renders show this person as
+      // an attendee of this meeting.
+      setMeetings((prev) =>
+        prev.map((m) =>
+          m.id === meetingId && !m.attendees.includes(profileId)
+            ? { ...m, attendees: [...m.attendees, profileId] }
+            : m,
+        ),
+      );
+      // Idempotent on the composite PK; safe to call even if already present.
+      await supabase
+        .from('meeting_attendees')
+        .upsert({ meeting_id: meetingId, profile_id: profileId }, { onConflict: 'meeting_id,profile_id' });
+    },
   };
 
   const onAddAgenda = async (item: string, sectionId: string) => {
@@ -306,7 +359,7 @@ export function AppShell({
 
           {page === 'horizontal' && (
             <HorizontalView
-              data={initialData}
+              data={data}
               agenda={seriesAgenda}
               sections={seriesSections}
               meetings={seriesMeetings}
@@ -321,7 +374,7 @@ export function AppShell({
           )}
           {page === 'actions' && (
             <ActionLog
-              data={initialData}
+              data={data}
               agenda={seriesAgenda}
               meetings={seriesMeetings}
               actions={seriesActions}
@@ -330,7 +383,7 @@ export function AppShell({
           )}
           {page === 'decisions' && (
             <DecisionLog
-              data={initialData}
+              data={data}
               agenda={seriesAgenda}
               sections={seriesSections}
               meetings={seriesMeetings}
@@ -343,7 +396,7 @@ export function AppShell({
 
       {selected && (
         <CellDrawer
-          data={initialData}
+          data={data}
           agenda={seriesAgenda}
           sections={seriesSections}
           meetings={seriesMeetings}
