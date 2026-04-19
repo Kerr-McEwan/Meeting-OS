@@ -49,6 +49,7 @@ export interface Meeting {
   id: string;
   series_id: string;
   meeting_date: string;
+  meeting_time: string | null;
   label: string | null;
   chair_id: string | null;
   upcoming: boolean;

@@ -124,6 +124,7 @@ interface HorizontalViewProps {
   cellStyle: TweaksSettings['cellStyle'];
   onAddAgenda: (item: string, sectionId: string) => void;
   onAddMeeting: (date: string) => Promise<Meeting | null>;
+  onEditMeeting: (meetingId: string) => void;
 }
 
 export function HorizontalView({
@@ -139,6 +140,7 @@ export function HorizontalView({
   cellStyle,
   onAddAgenda,
   onAddMeeting,
+  onEditMeeting,
 }: HorizontalViewProps) {
   const [hover, setHover] = useState<null | { aId: string; mId: string; x: number; y: number }>(null);
   const [adding, setAdding] = useState(false);
@@ -254,11 +256,26 @@ export function HorizontalView({
                     .map((id) => personById(data.team, id))
                     .filter((x): x is TeamMember => Boolean(x));
                   return (
-                    <th key={m.id} colSpan={3} className={`meeting-head ${m.upcoming ? 'upcoming' : ''}`}>
+                    <th
+                      key={m.id}
+                      colSpan={3}
+                      className={`meeting-head editable ${m.upcoming ? 'upcoming' : ''}`}
+                      onClick={() => onEditMeeting(m.id)}
+                      title="Click to edit meeting"
+                      role="button"
+                    >
+                      <span className="mh-edit-hint" aria-hidden="true">
+                        <Icon name="edit" className="ic sm" />
+                      </span>
                       <div className="mh-top">
                         <div className="mh-date">
                           <div className="mh-label">{m.label}</div>
-                          <div className="col-date">{formatDateLong(m.meeting_date).split(',')[0]}</div>
+                          <div className="col-date">
+                            {formatDateLong(m.meeting_date).split(',')[0]}
+                            {m.meeting_time && (
+                              <span className="mh-time"> · {m.meeting_time.slice(0, 5)}</span>
+                            )}
+                          </div>
                         </div>
                         {m.upcoming && <span className="col-flag">Upcoming</span>}
                       </div>

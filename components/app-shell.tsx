@@ -8,6 +8,7 @@ import { CellDrawer, type CellDrawerHandlers } from './cell-drawer';
 import { ActionLog } from './action-log';
 import { DecisionLog } from './decision-log';
 import { NewSeriesModal, type NewSeriesInput } from './new-series-modal';
+import { MeetingEditModal, type MeetingEditPatch } from './meeting-edit-modal';
 import { TweaksPanel, applySettings } from './tweaks-panel';
 import { createClient } from '@/lib/supabase/browser';
 import { DEFAULT_TWEAKS } from '@/lib/types';
@@ -79,6 +80,8 @@ export function AppShell({
 
   const [selected, setSelected] = useState<SelectedCell | null>(null);
   const [newSeriesOpen, setNewSeriesOpen] = useState(false);
+  const [editingMeetingId, setEditingMeetingId] = useState<string | null>(null);
+  const editingMeeting = editingMeetingId ? meetings.find((m) => m.id === editingMeetingId) || null : null;
 
   const [settings, setSettings] = useState<TweaksSettings>(() => {
     if (typeof window === 'undefined') return DEFAULT_TWEAKS;
@@ -325,6 +328,94 @@ export function AppShell({
     return newMeeting;
   };
 
+  const onSaveMeetingEdit = async (meetingId: string, patch: MeetingEditPatch) => {
+    // 1) Update the meetings row.
+    const { error: upErr } = await supabase
+      .from('meetings')
+      .update({
+        meeting_date: patch.meeting_date,
+        meeting_time: patch.meeting_time,
+        label: patch.label,
+        chair_id: patch.chair_id,
+        upcoming: patch.upcoming,
+      })
+      .eq('id', meetingId);
+    if (upErr) {
+      console.error('[onSaveMeetingEdit] meetings update', upErr);
+      return;
+    }
+
+    // 2) If marking upcoming, un-flag other upcoming meetings in this series.
+    if (patch.upcoming) {
+      const siblings = meetings.filter(
+        (m) => m.series_id === seriesId && m.upcoming && m.id !== meetingId,
+      );
+      if (siblings.length > 0) {
+        await supabase
+          .from('meetings')
+          .update({ upcoming: false })
+          .in('id', siblings.map((m) => m.id));
+      }
+    }
+
+    // 3) Sync attendance.
+    // Compute the desired state and diff against what's in the DB.
+    const desiredIn: string[] = [];
+    const desiredApol: string[] = [];
+    const desiredOut: string[] = [];
+    Object.entries(patch.attendance).forEach(([profileId, state]) => {
+      if (state === 'in') desiredIn.push(profileId);
+      else if (state === 'apology') desiredApol.push(profileId);
+      else desiredOut.push(profileId);
+    });
+
+    // Remove anyone marked "out"
+    if (desiredOut.length > 0) {
+      await supabase
+        .from('meeting_attendees')
+        .delete()
+        .eq('meeting_id', meetingId)
+        .in('profile_id', desiredOut);
+    }
+
+    // Upsert in/apology rows
+    const rows = [
+      ...desiredIn.map((profile_id) => ({
+        meeting_id: meetingId, profile_id, is_chair: profile_id === patch.chair_id, is_apology: false,
+      })),
+      ...desiredApol.map((profile_id) => ({
+        meeting_id: meetingId, profile_id, is_chair: false, is_apology: true,
+      })),
+    ];
+    if (rows.length > 0) {
+      await supabase
+        .from('meeting_attendees')
+        .upsert(rows, { onConflict: 'meeting_id,profile_id' });
+    }
+
+    // 4) Update local state.
+    setMeetings((prev) =>
+      prev.map((m) => {
+        if (m.id !== meetingId) {
+          if (patch.upcoming && m.series_id === seriesId && m.upcoming) {
+            return { ...m, upcoming: false };
+          }
+          return m;
+        }
+        return {
+          ...m,
+          meeting_date: patch.meeting_date,
+          meeting_time: patch.meeting_time,
+          label: patch.label,
+          chair_id: patch.chair_id,
+          upcoming: patch.upcoming,
+          attendees: desiredIn,
+          apologies: desiredApol,
+        };
+      }).sort((a, b) => a.meeting_date.localeCompare(b.meeting_date)),
+    );
+  };
+
   const onCreateSeries = async (input: NewSeriesInput) => {
     const { data: seriesRow, error: seriesErr } = await supabase
       .from('meeting_series')
@@ -424,6 +515,7 @@ export function AppShell({
               cellStyle={settings.cellStyle}
               onAddAgenda={onAddAgenda}
               onAddMeeting={onAddMeeting}
+              onEditMeeting={setEditingMeetingId}
             />
           )}
           {page === 'actions' && (
@@ -470,6 +562,15 @@ export function AppShell({
         open={newSeriesOpen}
         onClose={() => setNewSeriesOpen(false)}
         onCreate={onCreateSeries}
+      />
+
+      <MeetingEditModal
+        open={!!editingMeeting}
+        meeting={editingMeeting}
+        team={team}
+        onClose={() => setEditingMeetingId(null)}
+        onSave={(patch) => onSaveMeetingEdit(editingMeeting!.id, patch)}
+        onAddTeammate={handlers.addTeamMember}
       />
     </div>
   );
