@@ -137,9 +137,13 @@ export function CellDrawer({
   const section = sections.find((s) => s.id === a.section_id);
   const linkedDecisions = decisions.filter((d) => d.agenda_item_id === a.id && d.meeting_id === m.id);
   const linkedActions = actions.filter((ac) => ac.agenda_item_id === a.id && ac.meeting_id === m.id);
-  const attendees = m.attendees
+  const meetingAttendees = m.attendees
     .map((id) => personById(data.team, id))
     .filter((x): x is TeamMember => Boolean(x));
+  // Fall back to the whole team when no attendees are set for this meeting,
+  // otherwise the assignee picker is empty and the user can't satisfy the
+  // "assignee required" constraint to log a decision or add an action.
+  const attendees = meetingAttendees.length > 0 ? meetingAttendees : data.team;
 
   const idx = agenda.findIndex((x) => x.id === a.id);
   const prev = idx > 0 ? agenda[idx - 1] : null;
