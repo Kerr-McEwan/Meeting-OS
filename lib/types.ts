@@ -53,6 +53,7 @@ export interface Meeting {
   label: string | null;
   chair_id: string | null;
   upcoming: boolean;
+  archived_at: string | null;
   attendees: string[];
   apologies: string[];
 }

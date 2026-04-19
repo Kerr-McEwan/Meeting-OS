@@ -1537,3 +1537,33 @@ table.pivot thead th.meeting-head.editable:hover .mh-edit-hint {
   gap: 8px;
   margin-top: 10px;
 }
+
+/* ---------- Archived meeting columns ---------- */
+table.pivot thead th.meeting-head.archived,
+table.pivot thead th.meeting-head.archived + th,
+table.pivot tbody td.tri-cell.archived-col {
+  opacity: 0.55;
+}
+table.pivot tbody td.tri-cell.archived-col {
+  background: var(--surface-2) !important;
+}
+.col-flag.archived {
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 1px 6px;
+  border-radius: 10px;
+  letter-spacing: 0.05em;
+}
+.me-archive-btn {
+  color: var(--text-muted);
+}
+.me-archive-btn:hover:not(:disabled) {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.btn.sm.ghost.on {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: color-mix(in oklch, var(--accent) 40%, transparent);
+}

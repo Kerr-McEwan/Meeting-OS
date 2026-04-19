@@ -22,6 +22,8 @@ export function MeetingEditModal({
   onClose,
   onSave,
   onAddTeammate,
+  onArchive,
+  onRestore,
 }: {
   open: boolean;
   meeting: Meeting | null;
@@ -29,6 +31,8 @@ export function MeetingEditModal({
   onClose: () => void;
   onSave: (patch: MeetingEditPatch) => Promise<void>;
   onAddTeammate: (name: string) => Promise<TeamMember | null>;
+  onArchive: () => Promise<void>;
+  onRestore: () => Promise<void>;
 }) {
   const initial = useMemo(() => {
     if (!meeting) return null;
@@ -245,6 +249,30 @@ export function MeetingEditModal({
         </div>
 
         <div className="modal-foot">
+          {meeting.archived_at ? (
+            <button
+              className="btn sm ghost me-archive-btn"
+              onClick={async () => { setSaving(true); await onRestore(); setSaving(false); }}
+              disabled={saving}
+              title="Restore this meeting to the live view"
+            >
+              Restore meeting
+            </button>
+          ) : (
+            <button
+              className="btn sm ghost me-archive-btn"
+              onClick={async () => {
+                if (!window.confirm('Archive this meeting? It will be hidden from the pivot but kept in the database.')) return;
+                setSaving(true);
+                await onArchive();
+                setSaving(false);
+              }}
+              disabled={saving}
+              title="Hide from the live view (not deleted)"
+            >
+              Archive meeting
+            </button>
+          )}
           <div className="spacer" />
           <button className="btn sm ghost" onClick={onClose} disabled={saving}>Cancel</button>
           <button className="btn sm primary" onClick={handleSave} disabled={!date || saving}>

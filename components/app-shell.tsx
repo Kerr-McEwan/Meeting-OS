@@ -99,7 +99,11 @@ export function AppShell({
   // --- series-scoped slices ---
   const seriesSections = sections.filter((s) => s.series_id === seriesId);
   const seriesAgenda = agenda.filter((a) => a.series_id === seriesId);
-  const seriesMeetings = meetings.filter((m) => m.series_id === seriesId);
+  const seriesMeetingsAll = meetings.filter((m) => m.series_id === seriesId);
+  // Hide archived meetings from logs and the pivot by default. The pivot
+  // has its own "Show archived" toggle that re-includes them with a
+  // faded treatment (see HorizontalView).
+  const seriesMeetings = seriesMeetingsAll.filter((m) => !m.archived_at);
   const seriesCells = cells.filter((c) => {
     const mtg = seriesMeetings.find((m) => m.id === c.meeting_id);
     return !!mtg;
@@ -346,6 +350,31 @@ export function AppShell({
     return newMeeting;
   };
 
+  const onArchiveMeeting = async (meetingId: string) => {
+    const stamp = new Date().toISOString();
+    setMeetings((prev) =>
+      prev.map((m) =>
+        m.id === meetingId ? { ...m, archived_at: stamp, upcoming: false } : m,
+      ),
+    );
+    const { error } = await supabase
+      .from('meetings')
+      .update({ archived_at: stamp, upcoming: false })
+      .eq('id', meetingId);
+    if (error) console.error('[onArchiveMeeting]', error);
+  };
+
+  const onRestoreMeeting = async (meetingId: string) => {
+    setMeetings((prev) =>
+      prev.map((m) => (m.id === meetingId ? { ...m, archived_at: null } : m)),
+    );
+    const { error } = await supabase
+      .from('meetings')
+      .update({ archived_at: null })
+      .eq('id', meetingId);
+    if (error) console.error('[onRestoreMeeting]', error);
+  };
+
   const onSaveMeetingEdit = async (meetingId: string, patch: MeetingEditPatch) => {
     // 1) Update the meetings row.
     const { error: upErr } = await supabase
@@ -589,6 +618,16 @@ export function AppShell({
         onClose={() => setEditingMeetingId(null)}
         onSave={(patch) => onSaveMeetingEdit(editingMeeting!.id, patch)}
         onAddTeammate={handlers.addTeamMember}
+        onArchive={async () => {
+          if (!editingMeeting) return;
+          await onArchiveMeeting(editingMeeting.id);
+          setEditingMeetingId(null);
+        }}
+        onRestore={async () => {
+          if (!editingMeeting) return;
+          await onRestoreMeeting(editingMeeting.id);
+          setEditingMeetingId(null);
+        }}
       />
     </div>
   );

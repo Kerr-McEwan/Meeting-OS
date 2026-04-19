@@ -146,9 +146,17 @@ export function HorizontalView({
   const [adding, setAdding] = useState(false);
   const [newItemText, setNewItemText] = useState('');
   const [newItemSection, setNewItemSection] = useState(sections[0]?.id || '');
+  const [showArchived, setShowArchived] = useState(false);
   const [addingMeeting, setAddingMeeting] = useState(false);
+
+  // Visible meetings: live ones always, archived ones gated on the toggle.
+  const visibleMeetings = showArchived
+    ? meetings
+    : meetings.filter((m) => !m.archived_at);
+  const archivedCount = meetings.filter((m) => m.archived_at).length;
   const [newMeetingDate, setNewMeetingDate] = useState<string>(() => {
-    const last = meetings[meetings.length - 1];
+    const live = meetings.filter((m) => !m.archived_at);
+    const last = live[live.length - 1];
     const base = last ? new Date(last.meeting_date + 'T00:00:00') : new Date();
     base.setDate(base.getDate() + 7);
     return base.toISOString().slice(0, 10);
@@ -200,7 +208,7 @@ export function HorizontalView({
           <span style={{ color: 'var(--text-muted)' }}>
             <strong style={{ color: 'var(--text)', fontWeight: 600 }}>{agenda.length}</strong> agenda items
             <span style={{ margin: '0 8px', color: 'var(--text-dim)' }}>·</span>
-            <strong style={{ color: 'var(--text)', fontWeight: 600 }}>{meetings.length}</strong> meetings
+            <strong style={{ color: 'var(--text)', fontWeight: 600 }}>{visibleMeetings.length}</strong> meetings
             <span style={{ margin: '0 8px', color: 'var(--text-dim)' }}>·</span>
             <strong style={{ color: 'var(--warn)', fontWeight: 600 }}>{carryCount}</strong> carry-forward
           </span>
@@ -209,6 +217,15 @@ export function HorizontalView({
             Each meeting has 3 tracks: Notes · Decisions · Actions
           </span>
           <button className="btn sm ghost"><Icon name="filter" className="ic sm" /> Filter</button>
+          {archivedCount > 0 && (
+            <button
+              className={`btn sm ghost ${showArchived ? 'on' : ''}`}
+              onClick={() => setShowArchived((v) => !v)}
+              title={showArchived ? 'Hide archived meetings' : 'Show archived meetings'}
+            >
+              {showArchived ? 'Hide archived' : `Show archived (${archivedCount})`}
+            </button>
+          )}
           {addingMeeting ? (
             <span className="new-meeting-form">
               <input
@@ -251,7 +268,7 @@ export function HorizontalView({
             <thead>
               <tr className="meeting-row">
                 <th className="corner row-head" rowSpan={2}>Agenda item</th>
-                {meetings.map((m) => {
+                {visibleMeetings.map((m) => {
                   const attendees = m.attendees
                     .map((id) => personById(data.team, id))
                     .filter((x): x is TeamMember => Boolean(x));
@@ -259,9 +276,9 @@ export function HorizontalView({
                     <th
                       key={m.id}
                       colSpan={3}
-                      className={`meeting-head editable ${m.upcoming ? 'upcoming' : ''}`}
+                      className={`meeting-head editable ${m.upcoming ? 'upcoming' : ''} ${m.archived_at ? 'archived' : ''}`}
                       onClick={() => onEditMeeting(m.id)}
-                      title="Click to edit meeting"
+                      title={m.archived_at ? 'Archived — click to edit or restore' : 'Click to edit meeting'}
                       role="button"
                     >
                       <span className="mh-edit-hint" aria-hidden="true">
@@ -278,6 +295,7 @@ export function HorizontalView({
                           </div>
                         </div>
                         {m.upcoming && <span className="col-flag">Upcoming</span>}
+                        {m.archived_at && <span className="col-flag archived">Archived</span>}
                       </div>
                       <div className="mh-attendees-label">Attendees</div>
                       <div className="mh-attendees" title={attendees.map((p) => p.name).join(', ')}>
@@ -304,7 +322,7 @@ export function HorizontalView({
                 })}
               </tr>
               <tr className="subhead-row">
-                {meetings.flatMap((m) => [
+                {visibleMeetings.flatMap((m) => [
                   <th key={m.id + '-n'} className={`subhead notes-h ${m.upcoming ? 'upcoming' : ''}`}>
                     <Icon name="edit" className="ic sm" style={{ verticalAlign: -2 }} /> Notes
                   </th>,
@@ -331,18 +349,20 @@ export function HorizontalView({
                         </div>
                       </div>
                     </th>
-                    {meetings.map((m) => {
+                    {visibleMeetings.map((m) => {
                       const c = cellOf(a.id, m.id);
                       const decs = decisionsFor(a.id, m.id);
                       const acts = actionsFor(a.id, m.id);
                       const upcoming = m.upcoming;
+                      const isArchived = !!m.archived_at;
+                      const colMod = `${upcoming ? 'upcoming-col' : ''} ${isArchived ? 'archived-col' : ''}`.trim();
                       const isSelected = (kind: SelectedCell['kind']) =>
                         selected && selected.aId === a.id && selected.mId === m.id && selected.kind === kind;
 
                       return (
                         <React.Fragment key={m.id}>
                           <td
-                            className={`tri-cell notes-cell ${upcoming ? 'upcoming-col' : ''}`}
+                            className={`tri-cell notes-cell ${colMod}`}
                             onMouseEnter={(e) => {
                               if (c) setHover({ aId: a.id, mId: m.id, x: e.clientX, y: e.clientY });
                             }}
@@ -360,7 +380,7 @@ export function HorizontalView({
                             </button>
                           </td>
 
-                          <td className={`tri-cell dec-cell ${upcoming ? 'upcoming-col' : ''}`}>
+                          <td className={`tri-cell dec-cell ${colMod}`}>
                             <button
                               className={`cell ${isSelected('decisions') ? 'selected' : ''} ${decs.length === 0 ? 'empty' : ''}`}
                               onClick={() => setSelected({ aId: a.id, mId: m.id, kind: 'decisions' })}
@@ -381,7 +401,7 @@ export function HorizontalView({
                             </button>
                           </td>
 
-                          <td className={`tri-cell act-cell ${upcoming ? 'upcoming-col' : ''}`}>
+                          <td className={`tri-cell act-cell ${colMod}`}>
                             <button
                               className={`cell ${isSelected('actions') ? 'selected' : ''} ${acts.length === 0 ? 'empty' : ''}`}
                               onClick={() => setSelected({ aId: a.id, mId: m.id, kind: 'actions' })}
@@ -410,7 +430,7 @@ export function HorizontalView({
                 );
               })}
               <tr className="add-agenda-row">
-                <th className="row-head add-agenda-head" colSpan={1 + meetings.length * 3}>
+                <th className="row-head add-agenda-head" colSpan={1 + visibleMeetings.length * 3}>
                   {adding ? (
                     <div className="add-agenda-form">
                       <select
