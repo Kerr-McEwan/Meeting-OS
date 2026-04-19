@@ -193,6 +193,15 @@ export function AppShell({
       const { data, error } = await supabase.from('decisions').insert(row).select().single();
       if (!error && data) setDecisions((prev) => [...prev, data as Decision]);
     },
+    updateDecision: async (id, patch) => {
+      const before = decisions.find((d) => d.id === id);
+      setDecisions((prev) => prev.map((d) => (d.id === id ? { ...d, ...patch } as Decision : d)));
+      const { error } = await supabase.from('decisions').update(patch).eq('id', id);
+      if (error) {
+        console.error('[updateDecision]', error);
+        if (before) setDecisions((prev) => prev.map((d) => (d.id === id ? before : d)));
+      }
+    },
     removeDecision: async (id) => {
       setDecisions((prev) => prev.filter((d) => d.id !== id));
       await supabase.from('decisions').delete().eq('id', id);
@@ -211,6 +220,15 @@ export function AppShell({
       };
       const { data, error } = await supabase.from('actions').insert(row).select().single();
       if (!error && data) setActions((prev) => [...prev, data as Action]);
+    },
+    updateAction: async (id, patch) => {
+      const before = actions.find((a) => a.id === id);
+      setActions((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } as Action : a)));
+      const { error } = await supabase.from('actions').update(patch).eq('id', id);
+      if (error) {
+        console.error('[updateAction]', error);
+        if (before) setActions((prev) => prev.map((a) => (a.id === id ? before : a)));
+      }
     },
     removeAction: async (id) => {
       setActions((prev) => prev.filter((a) => a.id !== id));

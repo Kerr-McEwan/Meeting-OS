@@ -21,8 +21,13 @@ import type {
 export interface CellDrawerHandlers {
   saveCell: (agendaItemId: string, meetingId: string, notes: string, status: CellStatus) => void;
   addDecision: (input: { meetingId: string; agendaItemId: string; sectionId: string | null; ownerId: string; text: string }) => void;
+  updateDecision: (id: string, patch: { text?: string; owner_id?: string | null }) => Promise<void>;
   removeDecision: (id: string) => void;
   addAction: (input: { meetingId: string; agendaItemId: string; ownerId: string; title: string; due: string | null; priority: ActionPriority }) => void;
+  updateAction: (
+    id: string,
+    patch: { title?: string; owner_id?: string | null; due_date?: string | null; priority?: ActionPriority },
+  ) => Promise<void>;
   removeAction: (id: string) => void;
   setActionStatus: (id: string, status: ActionStatus) => void;
   addTeamMember: (name: string) => Promise<TeamMember | null>;
@@ -69,6 +74,63 @@ export function CellDrawer({
   const [newActionOwner, setNewActionOwner] = useState<string | null>(null);
   const [newActionDue, setNewActionDue] = useState('');
   const [newActionPriority, setNewActionPriority] = useState<ActionPriority>('medium');
+
+  // In-place editing of already-logged decisions and actions.
+  const [editingDecisionId, setEditingDecisionId] = useState<string | null>(null);
+  const [editDecisionText, setEditDecisionText] = useState('');
+  const [editDecisionOwner, setEditDecisionOwner] = useState<string | null>(null);
+  const [editingActionId, setEditingActionId] = useState<string | null>(null);
+  const [editActionTitle, setEditActionTitle] = useState('');
+  const [editActionOwner, setEditActionOwner] = useState<string | null>(null);
+  const [editActionDue, setEditActionDue] = useState<string>('');
+  const [editActionPriority, setEditActionPriority] = useState<ActionPriority>('medium');
+
+  const beginEditDecision = (d: Decision) => {
+    setEditingDecisionId(d.id);
+    setEditDecisionText(d.text);
+    setEditDecisionOwner(d.owner_id);
+  };
+  const cancelEditDecision = () => {
+    setEditingDecisionId(null);
+    setEditDecisionText('');
+    setEditDecisionOwner(null);
+  };
+  const saveEditDecision = async () => {
+    if (!editingDecisionId) return;
+    const text = editDecisionText.trim();
+    if (!text) return;
+    await handlers.updateDecision(editingDecisionId, { text, owner_id: editDecisionOwner });
+    if (editDecisionOwner && m) void handlers.ensureAttendee(m.id, editDecisionOwner);
+    cancelEditDecision();
+  };
+
+  const beginEditAction = (ac: Action) => {
+    setEditingActionId(ac.id);
+    setEditActionTitle(ac.title);
+    setEditActionOwner(ac.owner_id);
+    setEditActionDue(ac.due_date || '');
+    setEditActionPriority(ac.priority);
+  };
+  const cancelEditAction = () => {
+    setEditingActionId(null);
+    setEditActionTitle('');
+    setEditActionOwner(null);
+    setEditActionDue('');
+    setEditActionPriority('medium');
+  };
+  const saveEditAction = async () => {
+    if (!editingActionId) return;
+    const title = editActionTitle.trim();
+    if (!title) return;
+    await handlers.updateAction(editingActionId, {
+      title,
+      owner_id: editActionOwner,
+      due_date: editActionDue || null,
+      priority: editActionPriority,
+    });
+    if (editActionOwner && m) void handlers.ensureAttendee(m.id, editActionOwner);
+    cancelEditAction();
+  };
 
   const key = selected ? `${selected.aId}:${selected.mId}` : '';
 
@@ -262,20 +324,72 @@ export function CellDrawer({
                 </span>
               </div>
               <div className="inline-list">
-                {linkedDecisions.map((d) => (
-                  <div key={d.id} className="inline-item">
-                    <Avatar person={personById(data.team, d.owner_id ?? '')} size="sm" />
-                    <span style={{ flex: 1 }}>
-                      <div>{d.text}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
-                        Owner: {personById(data.team, d.owner_id ?? '')?.name || '— unassigned —'}
+                {linkedDecisions.map((d) => {
+                  const isEditing = editingDecisionId === d.id;
+                  if (isEditing) {
+                    return (
+                      <div key={d.id} className="inline-item editing">
+                        <div style={{ flex: 1 }}>
+                          <textarea
+                            autoFocus
+                            className="field-input"
+                            rows={2}
+                            value={editDecisionText}
+                            onChange={(e) => setEditDecisionText(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) saveEditDecision();
+                              if (e.key === 'Escape') cancelEditDecision();
+                            }}
+                          />
+                          <div className="field-mini-label" style={{ marginTop: 8 }}>Owner</div>
+                          <AssigneePicker
+                            team={attendees}
+                            value={editDecisionOwner}
+                            onChange={setEditDecisionOwner}
+                            onAddTeammate={handlers.addTeamMember}
+                          />
+                          <div className="edit-actions">
+                            <button className="btn sm ghost" onClick={cancelEditDecision}>Cancel</button>
+                            <button
+                              className="btn sm primary"
+                              disabled={!editDecisionText.trim()}
+                              onClick={saveEditDecision}
+                            >
+                              Save
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                    </span>
-                    <button className="btn ghost sm icon" onClick={() => handlers.removeDecision(d.id)}>
-                      <Icon name="close" className="ic sm" />
-                    </button>
-                  </div>
-                ))}
+                    );
+                  }
+                  return (
+                    <div key={d.id} className="inline-item">
+                      <Avatar person={personById(data.team, d.owner_id ?? '')} size="sm" />
+                      <span style={{ flex: 1 }}>
+                        <div>{d.text}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                          Owner: {personById(data.team, d.owner_id ?? '')?.name || '— unassigned —'}
+                        </div>
+                      </span>
+                      <button
+                        className="btn ghost sm icon"
+                        onClick={() => beginEditDecision(d)}
+                        title="Edit decision"
+                        aria-label="Edit decision"
+                      >
+                        <Icon name="edit" className="ic sm" />
+                      </button>
+                      <button
+                        className="btn ghost sm icon"
+                        onClick={() => handlers.removeDecision(d.id)}
+                        title="Remove decision"
+                        aria-label="Remove decision"
+                      >
+                        <Icon name="close" className="ic sm" />
+                      </button>
+                    </div>
+                  );
+                })}
                 {linkedDecisions.length === 0 && (
                   <div style={{ color: 'var(--text-dim)', fontStyle: 'italic', padding: '8px 0' }}>No decisions yet.</div>
                 )}
@@ -321,23 +435,99 @@ export function CellDrawer({
                 </span>
               </div>
               <div className="inline-list">
-                {linkedActions.map((ac) => (
-                  <div key={ac.id} className="inline-item">
-                    <Avatar person={personById(data.team, ac.owner_id ?? '')} size="sm" />
-                    <span style={{ flex: 1 }}>
-                      <div>{ac.title}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
-                        <span className={`priority ${ac.priority}`}>{ac.priority}</span>
-                        <span style={{ margin: '0 6px' }}>·</span>
-                        Due {formatDate(ac.due_date)}
+                {linkedActions.map((ac) => {
+                  const isEditing = editingActionId === ac.id;
+                  if (isEditing) {
+                    return (
+                      <div key={ac.id} className="inline-item editing">
+                        <div style={{ flex: 1 }}>
+                          <input
+                            autoFocus
+                            className="field-input"
+                            value={editActionTitle}
+                            onChange={(e) => setEditActionTitle(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') saveEditAction();
+                              if (e.key === 'Escape') cancelEditAction();
+                            }}
+                          />
+                          <div className="add-row-meta" style={{ marginTop: 8 }}>
+                            <div style={{ flex: 1 }}>
+                              <div className="field-mini-label">Owner</div>
+                              <AssigneePicker
+                                team={attendees}
+                                value={editActionOwner}
+                                onChange={setEditActionOwner}
+                                onAddTeammate={handlers.addTeamMember}
+                              />
+                            </div>
+                            <div>
+                              <div className="field-mini-label">Due</div>
+                              <input
+                                type="date"
+                                className="field-input sm"
+                                value={editActionDue}
+                                onChange={(e) => setEditActionDue(e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <div className="field-mini-label">Priority</div>
+                              <select
+                                className="field-input sm"
+                                value={editActionPriority}
+                                onChange={(e) => setEditActionPriority(e.target.value as ActionPriority)}
+                              >
+                                <option value="high">High</option>
+                                <option value="medium">Medium</option>
+                                <option value="low">Low</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div className="edit-actions">
+                            <button className="btn sm ghost" onClick={cancelEditAction}>Cancel</button>
+                            <button
+                              className="btn sm primary"
+                              disabled={!editActionTitle.trim()}
+                              onClick={saveEditAction}
+                            >
+                              Save
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                    </span>
-                    <StatusPill value={ac.status} onChange={(s) => handlers.setActionStatus(ac.id, s as ActionStatus)} />
-                    <button className="btn ghost sm icon" onClick={() => handlers.removeAction(ac.id)}>
-                      <Icon name="close" className="ic sm" />
-                    </button>
-                  </div>
-                ))}
+                    );
+                  }
+                  return (
+                    <div key={ac.id} className="inline-item">
+                      <Avatar person={personById(data.team, ac.owner_id ?? '')} size="sm" />
+                      <span style={{ flex: 1 }}>
+                        <div>{ac.title}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                          <span className={`priority ${ac.priority}`}>{ac.priority}</span>
+                          <span style={{ margin: '0 6px' }}>·</span>
+                          Due {formatDate(ac.due_date)}
+                        </div>
+                      </span>
+                      <StatusPill value={ac.status} onChange={(s) => handlers.setActionStatus(ac.id, s as ActionStatus)} />
+                      <button
+                        className="btn ghost sm icon"
+                        onClick={() => beginEditAction(ac)}
+                        title="Edit action"
+                        aria-label="Edit action"
+                      >
+                        <Icon name="edit" className="ic sm" />
+                      </button>
+                      <button
+                        className="btn ghost sm icon"
+                        onClick={() => handlers.removeAction(ac.id)}
+                        title="Remove action"
+                        aria-label="Remove action"
+                      >
+                        <Icon name="close" className="ic sm" />
+                      </button>
+                    </div>
+                  );
+                })}
                 {linkedActions.length === 0 && (
                   <div style={{ color: 'var(--text-dim)', fontStyle: 'italic', padding: '8px 0' }}>No actions yet.</div>
                 )}

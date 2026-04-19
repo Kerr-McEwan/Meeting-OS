@@ -1518,3 +1518,22 @@ table.pivot thead th.meeting-head.editable:hover .mh-edit-hint {
   gap: 8px;
 }
 .me-add-spacer { width: 20px; }
+
+/* ---------- Inline edit in drawer (decisions + actions) ---------- */
+.inline-item.editing {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  align-items: stretch;
+}
+.inline-item.editing textarea.field-input {
+  resize: vertical;
+  min-height: 54px;
+}
+.edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
