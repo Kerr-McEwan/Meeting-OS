@@ -200,7 +200,6 @@ export function CellDrawer({
     setNewAction(''); setNewActionOwner(null); setNewActionPriority('medium'); setNewActionDue(m.meeting_date);
   };
 
-  const section = sections.find((s) => s.id === a.section_id);
   const linkedDecisions = decisions.filter((d) => d.agenda_item_id === a.id && d.meeting_id === m.id);
   const linkedActions = actions.filter((ac) => ac.agenda_item_id === a.id && ac.meeting_id === m.id);
   // Always show the full team in the assignee picker — Kerr wants zero
@@ -250,7 +249,6 @@ export function CellDrawer({
               <Icon name="close" className="ic sm" />
             </button>
           </div>
-          <div className="d-eyebrow" style={{ color: section?.color }}>{section?.name}</div>
           <h2>{a.item}</h2>
           <div className="drawer-meta">
             <span className="meta-pill">

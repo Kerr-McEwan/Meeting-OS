@@ -20,13 +20,11 @@ export function DecisionLog({
   decisions: Decision[];
   currentSeries: MeetingSeries | null;
 }) {
-  const [sectionFilter, setSectionFilter] = useState<'all' | string>('all');
   const [meetingFilter, setMeetingFilter] = useState<'all' | string>('all');
   const [query, setQuery] = useState('');
 
   const q = query.trim().toLowerCase();
   const filtered = decisions.filter((d) => {
-    if (sectionFilter !== 'all' && d.section_id !== sectionFilter) return false;
     if (meetingFilter !== 'all' && d.meeting_id !== meetingFilter) return false;
     if (q) {
       const ag = agenda.find((a) => a.id === d.agenda_item_id);
@@ -48,22 +46,6 @@ export function DecisionLog({
         <SearchInput value={query} onChange={setQuery} placeholder="Search decisions…" />
       </div>
       <div className="filter-bar">
-        <span className="chip-label">Section</span>
-        <button
-          className={`chip-btn ${sectionFilter === 'all' ? 'active' : ''}`}
-          onClick={() => setSectionFilter('all')}
-        >All</button>
-        {sections.map((s) => (
-          <button
-            key={s.id}
-            className={`chip-btn ${sectionFilter === s.id ? 'active' : ''}`}
-            onClick={() => setSectionFilter(s.id)}
-          >
-            <span style={{ width: 8, height: 8, borderRadius: 2, background: s.color, display: 'inline-block' }} />
-            {s.name}
-          </button>
-        ))}
-        <span className="chip-divider" />
         <span className="chip-label">Meeting</span>
         <button
           className={`chip-btn ${meetingFilter === 'all' ? 'active' : ''}`}

@@ -46,6 +46,7 @@ export interface AgendaItem {
   section_id: string | null;
   item: string;
   sort_order: number;
+  sub_items: string[];
 }
 
 export interface Meeting {

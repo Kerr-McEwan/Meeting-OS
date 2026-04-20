@@ -290,11 +290,21 @@ export function AppShell({
     },
   };
 
-  const onAddAgenda = async (item: string, sectionId: string) => {
+  const onAddAgenda = async (item: string) => {
     const maxOrder = seriesAgenda.reduce((m, a) => Math.max(m, a.sort_order), 0);
-    const row = { series_id: seriesId, section_id: sectionId, item, sort_order: maxOrder + 1 };
+    const row = { series_id: seriesId, item, sort_order: maxOrder + 1, sub_items: [] as string[] };
     const { data, error } = await supabase.from('agenda_items').insert(row).select().single();
     if (!error && data) setAgenda((prev) => [...prev, data as AgendaItem]);
+  };
+
+  const onUpdateAgenda = async (id: string, patch: { sub_items: string[] }) => {
+    const before = agenda.find((a) => a.id === id);
+    setAgenda((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)));
+    const { error } = await supabase.from('agenda_items').update(patch).eq('id', id);
+    if (error) {
+      console.error('[onUpdateAgenda]', error);
+      if (before) setAgenda((prev) => prev.map((a) => (a.id === id ? before : a)));
+    }
   };
 
   const onAddMeeting = async (dateISO: string) => {
@@ -489,14 +499,12 @@ export function AppShell({
     ].map((s) => ({ ...s, series_id: (seriesRow as MeetingSeries).id }));
 
     const { data: sectionRows } = await supabase.from('sections').insert(sectionsToInsert).select();
-    const sectionMap = new Map<string, string>();
-    (sectionRows as Section[] | null ?? []).forEach((s) => sectionMap.set(s.slug, s.id));
 
     const agendaToInsert = input.agenda.map((a) => ({
       series_id: (seriesRow as MeetingSeries).id,
-      section_id: sectionMap.get(a.section_slug) ?? null,
       item: a.item,
       sort_order: a.sort_order,
+      sub_items: [] as string[],
     }));
     const { data: agendaRows } = await supabase.from('agenda_items').insert(agendaToInsert).select();
 
@@ -561,6 +569,7 @@ export function AppShell({
               setSelected={setSelected}
               cellStyle={settings.cellStyle}
               onAddAgenda={onAddAgenda}
+              onUpdateAgenda={onUpdateAgenda}
               onAddMeeting={onAddMeeting}
               onEditMeeting={setEditingMeetingId}
             />

@@ -1578,3 +1578,79 @@ table.pivot tbody td.tri-cell.archived-col {
   background: var(--accent);
   color: var(--accent-fg);
 }
+
+/* ---------- Agenda sub-items (numbered, up to 4) ---------- */
+.row-title-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  display: block;
+}
+.row-title-btn:hover .title { color: var(--accent); }
+
+.sub-list {
+  list-style: none;
+  counter-reset: sub;
+  margin: 4px 0 0 0;
+  padding: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.sub-list li {
+  counter-increment: sub;
+  padding: 1px 0 1px 18px;
+  position: relative;
+  line-height: 1.35;
+}
+.sub-list li::before {
+  content: counter(sub) ".";
+  position: absolute;
+  left: 2px;
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+.sub-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sub-edit .title {
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+.sub-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sub-num {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-weight: 600;
+  width: 14px;
+  text-align: right;
+}
+.sub-edit-input {
+  flex: 1;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 3px 6px;
+  font: inherit;
+  font-size: 11.5px;
+  outline: none;
+}
+.sub-edit-input:focus { border-color: var(--accent); }
+.sub-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 6px;
+}

@@ -11,7 +11,7 @@ export interface NewSeriesInput {
     description: string;
     color_accent: string;
   };
-  agenda: { item: string; section_slug: string; sort_order: number }[];
+  agenda: { item: string; sort_order: number }[];
 }
 
 const COLOR_OPTIONS = [
@@ -21,14 +21,6 @@ const COLOR_OPTIONS = [
   { name: 'Plum',       value: 'oklch(0.55 0.16 320)' },
   { name: 'Ochre',      value: 'oklch(0.68 0.14 80)' },
   { name: 'Slate',      value: 'oklch(0.55 0.04 250)' },
-];
-
-const SECTION_OPTIONS = [
-  { id: 'checkin',     label: 'Check-in' },
-  { id: 'performance', label: 'Performance' },
-  { id: 'strategic',   label: 'Strategic' },
-  { id: 'operational', label: 'Operational' },
-  { id: 'close',       label: 'Close' },
 ];
 
 export function NewSeriesModal({
@@ -45,7 +37,7 @@ export function NewSeriesModal({
   const [cadence, setCadence] = useState('Every Mon · 09:00');
   const [description, setDescription] = useState('');
   const [accent, setAccent] = useState(COLOR_OPTIONS[0].value);
-  const [items, setItems] = useState([{ id: 'tmp1', item: '', section: 'checkin' }]);
+  const [items, setItems] = useState([{ id: 'tmp1', item: '' }]);
   const nameRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -55,7 +47,7 @@ export function NewSeriesModal({
       setCadence('Every Mon · 09:00');
       setDescription('');
       setAccent(COLOR_OPTIONS[0].value);
-      setItems([{ id: 'tmp1', item: '', section: 'checkin' }]);
+      setItems([{ id: 'tmp1', item: '' }]);
       setTimeout(() => nameRef.current?.focus(), 40);
     }
   }, [open]);
@@ -63,8 +55,8 @@ export function NewSeriesModal({
   if (!open) return null;
 
   const addItem = () =>
-    setItems((prev) => [...prev, { id: `tmp${prev.length + 1}`, item: '', section: 'checkin' }]);
-  const updateItem = (id: string, patch: Partial<{ item: string; section: string }>) =>
+    setItems((prev) => [...prev, { id: `tmp${prev.length + 1}`, item: '' }]);
+  const updateItem = (id: string, patch: Partial<{ item: string }>) =>
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)));
   const removeItem = (id: string) =>
     setItems((prev) => (prev.length > 1 ? prev.filter((it) => it.id !== id) : prev));
@@ -87,7 +79,6 @@ export function NewSeriesModal({
       },
       agenda: validItems.map((it, i) => ({
         item: it.item.trim(),
-        section_slug: it.section,
         sort_order: i + 1,
       })),
     });
@@ -182,15 +173,6 @@ export function NewSeriesModal({
                     onChange={(e) => updateItem(it.id, { item: e.target.value })}
                     placeholder="Agenda item"
                   />
-                  <select
-                    className="field-select"
-                    value={it.section}
-                    onChange={(e) => updateItem(it.id, { section: e.target.value })}
-                  >
-                    {SECTION_OPTIONS.map((s) => (
-                      <option key={s.id} value={s.id}>{s.label}</option>
-                    ))}
-                  </select>
                   <button
                     className="icon-btn"
                     onClick={() => removeItem(it.id)}

@@ -122,7 +122,8 @@ interface HorizontalViewProps {
   selected: SelectedCell | null;
   setSelected: (s: SelectedCell | null) => void;
   cellStyle: TweaksSettings['cellStyle'];
-  onAddAgenda: (item: string, sectionId: string) => void;
+  onAddAgenda: (item: string) => void;
+  onUpdateAgenda: (id: string, patch: { sub_items: string[] }) => Promise<void>;
   onAddMeeting: (date: string) => Promise<Meeting | null>;
   onEditMeeting: (meetingId: string) => void;
 }
@@ -139,15 +140,35 @@ export function HorizontalView({
   setSelected,
   cellStyle,
   onAddAgenda,
+  onUpdateAgenda,
   onAddMeeting,
   onEditMeeting,
 }: HorizontalViewProps) {
   const [hover, setHover] = useState<null | { aId: string; mId: string; x: number; y: number }>(null);
   const [adding, setAdding] = useState(false);
   const [newItemText, setNewItemText] = useState('');
-  const [newItemSection, setNewItemSection] = useState(sections[0]?.id || '');
   const [showArchived, setShowArchived] = useState(false);
   const [addingMeeting, setAddingMeeting] = useState(false);
+
+  // Sub-item editor state: which agenda row is expanded, and the 4 slot values.
+  const [editingAgendaId, setEditingAgendaId] = useState<string | null>(null);
+  const [subSlots, setSubSlots] = useState<string[]>(['', '', '', '']);
+
+  const beginEditAgenda = (a: AgendaItem) => {
+    setEditingAgendaId(a.id);
+    const current = a.sub_items || [];
+    setSubSlots([0, 1, 2, 3].map((i) => current[i] ?? ''));
+  };
+  const cancelEditAgenda = () => {
+    setEditingAgendaId(null);
+    setSubSlots(['', '', '', '']);
+  };
+  const saveEditAgenda = async () => {
+    if (!editingAgendaId) return;
+    const cleaned = subSlots.map((s) => s.trim()).filter((s) => s.length > 0).slice(0, 4);
+    await onUpdateAgenda(editingAgendaId, { sub_items: cleaned });
+    cancelEditAgenda();
+  };
 
   // Visible meetings: live ones always, archived ones gated on the toggle.
   const visibleMeetings = showArchived
@@ -177,13 +198,11 @@ export function HorizontalView({
     decisions.filter((d) => d.agenda_item_id === aId && d.meeting_id === mId);
   const actionsFor = (aId: string, mId: string) =>
     actions.filter((ac) => ac.agenda_item_id === aId && ac.meeting_id === mId);
-  const sectionOf = (id: string | null) => sections.find((s) => s.id === id);
-
   const carryCount = useMemo(() => cells.filter((c) => c.status === 'carry').length, [cells]);
 
   const addAgendaItem = () => {
-    if (!newItemText.trim() || !newItemSection) return;
-    onAddAgenda(newItemText.trim(), newItemSection);
+    if (!newItemText.trim()) return;
+    onAddAgenda(newItemText.trim());
     setNewItemText('');
     setAdding(false);
   };
@@ -337,15 +356,56 @@ export function HorizontalView({
             </thead>
             <tbody>
               {agenda.map((a) => {
-                const section = sectionOf(a.section_id);
+                const isEditingAgenda = editingAgendaId === a.id;
+                const subs = a.sub_items || [];
                 return (
                   <tr key={a.id}>
                     <th className="row-head">
                       <div className="row-head-inner">
-                        <span className="section-bar" style={{ background: section?.color || 'var(--border)' }} />
                         <div className="row-title">
-                          <div className="title">{a.item}</div>
-                          {section && <span className="section-tag">{section.name}</span>}
+                          {isEditingAgenda ? (
+                            <div className="sub-edit">
+                              <div className="title">{a.item}</div>
+                              {subSlots.map((v, i) => (
+                                <div key={i} className="sub-edit-row">
+                                  <span className="sub-num">{i + 1}.</span>
+                                  <input
+                                    autoFocus={i === 0}
+                                    className="sub-edit-input"
+                                    placeholder={`Sub-item ${i + 1}${i === 0 ? ' (optional)' : ''}`}
+                                    value={v}
+                                    onChange={(e) =>
+                                      setSubSlots((prev) => prev.map((s, idx) => (idx === i ? e.target.value : s)))
+                                    }
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) saveEditAgenda();
+                                      if (e.key === 'Escape') cancelEditAgenda();
+                                    }}
+                                  />
+                                </div>
+                              ))}
+                              <div className="sub-edit-actions">
+                                <button className="btn sm ghost" onClick={cancelEditAgenda}>Cancel</button>
+                                <button className="btn sm primary" onClick={saveEditAgenda}>Done</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              className="row-title-btn"
+                              onClick={() => beginEditAgenda(a)}
+                              title="Click to edit sub-items"
+                            >
+                              <div className="title">{a.item}</div>
+                              {subs.length > 0 && (
+                                <ol className="sub-list">
+                                  {subs.slice(0, 4).map((s, i) => (
+                                    <li key={i}>{s}</li>
+                                  ))}
+                                </ol>
+                              )}
+                            </button>
+                          )}
                         </div>
                       </div>
                     </th>
@@ -433,15 +493,6 @@ export function HorizontalView({
                 <th className="row-head add-agenda-head" colSpan={1 + visibleMeetings.length * 3}>
                   {adding ? (
                     <div className="add-agenda-form">
-                      <select
-                        className="field-input sm"
-                        value={newItemSection}
-                        onChange={(e) => setNewItemSection(e.target.value)}
-                      >
-                        {sections.map((s) => (
-                          <option key={s.id} value={s.id}>{s.name}</option>
-                        ))}
-                      </select>
                       <input
                         autoFocus
                         className="field-input sm"
