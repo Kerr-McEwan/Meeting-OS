@@ -295,7 +295,7 @@ table.pivot thead th.upcoming {
 
 table.pivot tbody th.row-head {
   position: sticky; left: 0; z-index: 3;
-  background: var(--surface);
+  background: var(--surface-2);
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   text-align: left;
@@ -319,7 +319,7 @@ table.pivot thead th.corner {
 }
 .section-bar { width: 3px; align-self: stretch; border-radius: 2px; flex: 0 0 3px; }
 .row-title { flex: 1; min-width: 0; }
-.row-title .title { font-weight: 500; color: var(--text); }
+.row-title .title { font-weight: 600; color: var(--text); }
 .row-title .section-tag {
   display: block; font-size: 10.5px; color: var(--text-dim);
   letter-spacing: 0.02em;
