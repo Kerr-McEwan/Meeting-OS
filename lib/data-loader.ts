@@ -14,13 +14,14 @@ import type {
 import { autoColor, autoInitials } from './utils';
 
 function profileToTeam(p: Profile): TeamMember {
-  const name = p.full_name || p.email.split('@')[0];
+  const name = p.full_name || (p.email ?? '').split('@')[0] || 'Unknown';
   return {
     id: p.id,
     name,
     role: p.role || '—',
     initials: p.initials || autoInitials(name),
     color: p.color || autoColor(p.id),
+    is_admin: p.is_admin ?? false,
   };
 }
 

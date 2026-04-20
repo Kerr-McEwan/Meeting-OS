@@ -47,6 +47,7 @@ export default async function AppPage() {
     role: profile?.role || 'Team member',
     initials: profile?.initials || autoInitials(user.email?.split('@')[0] || 'U'),
     color: profile?.color || autoColor(user.id),
+    is_admin: profile?.is_admin ?? false,
     email: user.email ?? '',
   };
 

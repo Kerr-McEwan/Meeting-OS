@@ -13,11 +13,13 @@ export type ActionPriority = 'low' | 'medium' | 'high';
 
 export interface Profile {
   id: string;
-  email: string;
+  email: string | null;
   full_name: string | null;
   initials: string | null;
   role: string | null;
   color: string | null;
+  is_admin?: boolean;
+  is_guest?: boolean;
 }
 
 export interface TeamMember {
@@ -26,6 +28,7 @@ export interface TeamMember {
   role: string;
   initials: string;
   color: string;
+  is_admin?: boolean;
 }
 
 export interface Section {

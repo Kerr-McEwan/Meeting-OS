@@ -86,7 +86,10 @@ export function Sidebar({
           <Avatar person={user} size="sm" />
           {!collapsed && (
             <div>
-              <div style={{ color: 'var(--text)', fontWeight: 500, fontSize: 11.5 }}>{user.name}</div>
+              <div style={{ color: 'var(--text)', fontWeight: 500, fontSize: 11.5, display: 'flex', alignItems: 'center', gap: 6 }}>
+                {user.name}
+                {user.is_admin && <span className="admin-badge">Admin</span>}
+              </div>
               <div>{user.role || user.email}</div>
             </div>
           )}
