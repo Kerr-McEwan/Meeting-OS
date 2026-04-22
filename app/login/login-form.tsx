@@ -43,7 +43,18 @@ export default function LoginForm({ allowedDomains, errorCode, next }: Props) {
 
     if (signInError) {
       setStatus('error');
-      setError(signInError.message);
+      const raw = (signInError.message || '').toLowerCase();
+      if (raw.includes('rate limit') || raw.includes('too many')) {
+        setError(
+          'Too many sign-in attempts in a short period. Wait a few minutes and try again. If it keeps failing, contact your admin.',
+        );
+      } else if (raw.includes('sending') && raw.includes('email')) {
+        setError(
+          "We couldn't send the magic-link email. This is a server-side email setup issue — please ask your admin to check the Meeting OS email configuration, or contact them for a direct invite link.",
+        );
+      } else {
+        setError(signInError.message);
+      }
       return;
     }
     setStatus('sent');
