@@ -18,9 +18,36 @@ const ERROR_MESSAGES: Record<string, string> = {
 export default function LoginForm({ allowedDomains, errorCode, next }: Props) {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [msStatus, setMsStatus] = useState<'idle' | 'redirecting'>('idle');
   const [error, setError] = useState<string | null>(
     errorCode ? ERROR_MESSAGES[errorCode] ?? errorCode : null,
   );
+
+  const buildRedirect = () => {
+    const redirectTo = new URL('/auth/callback', window.location.origin);
+    if (next) redirectTo.searchParams.set('next', next);
+    return redirectTo.toString();
+  };
+
+  const onMicrosoft = async () => {
+    setError(null);
+    setMsStatus('redirecting');
+    const supabase = createClient();
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: 'azure',
+      options: {
+        scopes: 'email openid profile',
+        redirectTo: buildRedirect(),
+      },
+    });
+    if (oauthError) {
+      setMsStatus('idle');
+      setError(
+        'Microsoft sign-in isn\'t configured yet. Contact your admin, or use the email sign-in below.',
+      );
+    }
+    // On success the browser redirects to Microsoft — nothing else to do here.
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,12 +60,9 @@ export default function LoginForm({ allowedDomains, errorCode, next }: Props) {
 
     setStatus('sending');
     const supabase = createClient();
-    const redirectTo = new URL('/auth/callback', window.location.origin);
-    if (next) redirectTo.searchParams.set('next', next);
-
     const { error: signInError } = await supabase.auth.signInWithOtp({
       email: trimmed,
-      options: { emailRedirectTo: redirectTo.toString() },
+      options: { emailRedirectTo: buildRedirect() },
     });
 
     if (signInError) {
@@ -50,7 +74,7 @@ export default function LoginForm({ allowedDomains, errorCode, next }: Props) {
         );
       } else if (raw.includes('sending') && raw.includes('email')) {
         setError(
-          "We couldn't send the magic-link email. This is a server-side email setup issue — please ask your admin to check the Meeting OS email configuration, or contact them for a direct invite link.",
+          "We couldn't send the magic-link email. Try 'Sign in with Microsoft' above — it doesn't rely on email delivery.",
         );
       } else {
         setError(signInError.message);
@@ -85,8 +109,23 @@ export default function LoginForm({ allowedDomains, errorCode, next }: Props) {
           <>
             <h1>Sign in</h1>
             <p className="login-sub">
-              Enter your M Squared or EBS Construction email and we'll send you a sign-in link.
+              Use your Microsoft 365 account — it's the same sign-in you use for Outlook and Teams.
             </p>
+
+            <button
+              type="button"
+              className="btn ms-signin"
+              onClick={onMicrosoft}
+              disabled={msStatus === 'redirecting'}
+            >
+              <MicrosoftLogo />
+              {msStatus === 'redirecting' ? 'Redirecting to Microsoft…' : 'Sign in with Microsoft'}
+            </button>
+
+            <div className="login-divider">
+              <span>or</span>
+            </div>
+
             <form onSubmit={onSubmit} className="login-form">
               <label className="field">
                 <span className="field-label">Work email</span>
@@ -98,14 +137,13 @@ export default function LoginForm({ allowedDomains, errorCode, next }: Props) {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@msquared.co.uk"
                   required
-                  autoFocus
                 />
               </label>
 
               {error && <div className="login-error">{error}</div>}
 
               <button
-                className="btn primary"
+                className="btn ghost email-signin"
                 type="submit"
                 disabled={status === 'sending'}
               >
@@ -119,5 +157,16 @@ export default function LoginForm({ allowedDomains, errorCode, next }: Props) {
         )}
       </div>
     </div>
+  );
+}
+
+function MicrosoftLogo() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true">
+      <rect x="1"  y="1"  width="8" height="8" fill="#f25022" />
+      <rect x="11" y="1"  width="8" height="8" fill="#7fba00" />
+      <rect x="1"  y="11" width="8" height="8" fill="#00a4ef" />
+      <rect x="11" y="11" width="8" height="8" fill="#ffb900" />
+    </svg>
   );
 }
