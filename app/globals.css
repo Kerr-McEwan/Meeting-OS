@@ -1818,3 +1818,34 @@ table.pivot tbody td.tri-cell.archived-col {
   color: var(--accent-fg);
   font-weight: 600;
 }
+
+/* Dynamic sub-item editor: + add another, × remove buttons */
+.sub-add-btn {
+  background: none;
+  border: 1px dashed var(--border-strong);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  align-self: flex-start;
+  margin-top: 2px;
+}
+.sub-add-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.sub-remove {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  display: inline-grid;
+  place-items: center;
+}
+.sub-remove:hover { color: var(--danger); background: var(--danger-soft); }

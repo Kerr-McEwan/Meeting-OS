@@ -207,14 +207,18 @@ export function HorizontalView({
   const [showArchived, setShowArchived] = useState(false);
   const [addingMeeting, setAddingMeeting] = useState(false);
 
-  // Sub-item editor state: which agenda row is expanded, and the 4 slot values.
+  // Sub-item editor state: which agenda row is expanded, and the slot values.
+  // Slot count is dynamic — starts at max(existing, 4) and grows on demand.
   const [editingAgendaId, setEditingAgendaId] = useState<string | null>(null);
   const [subSlots, setSubSlots] = useState<string[]>(['', '', '', '']);
 
   const beginEditAgenda = (a: AgendaItem) => {
     setEditingAgendaId(a.id);
     const current = a.sub_items || [];
-    setSubSlots([0, 1, 2, 3].map((i) => current[i] ?? ''));
+    // Show all existing items plus an empty slot to keep typing momentum.
+    // Minimum of 4 slots so the editor doesn't feel cramped on first use.
+    const slotCount = Math.max(4, current.length + 1);
+    setSubSlots(Array.from({ length: slotCount }, (_, i) => current[i] ?? ''));
   };
   const cancelEditAgenda = () => {
     setEditingAgendaId(null);
@@ -222,10 +226,13 @@ export function HorizontalView({
   };
   const saveEditAgenda = async () => {
     if (!editingAgendaId) return;
-    const cleaned = subSlots.map((s) => s.trim()).filter((s) => s.length > 0).slice(0, 4);
+    const cleaned = subSlots.map((s) => s.trim()).filter((s) => s.length > 0);
     await onUpdateAgenda(editingAgendaId, { sub_items: cleaned });
     cancelEditAgenda();
   };
+  const addSubSlot = () => setSubSlots((prev) => [...prev, '']);
+  const removeSubSlot = (i: number) =>
+    setSubSlots((prev) => (prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev));
 
   // Visible meetings: live ones always, archived ones gated on the toggle.
   const visibleMeetings = showArchived
@@ -439,8 +446,27 @@ export function HorizontalView({
                                       if (e.key === 'Escape') cancelEditAgenda();
                                     }}
                                   />
+                                  {subSlots.length > 1 && (
+                                    <button
+                                      type="button"
+                                      className="sub-remove"
+                                      onClick={() => removeSubSlot(i)}
+                                      title="Remove this sub-item"
+                                      aria-label="Remove sub-item"
+                                    >
+                                      ×
+                                    </button>
+                                  )}
                                 </div>
                               ))}
+                              <button
+                                type="button"
+                                className="sub-add-btn"
+                                onClick={addSubSlot}
+                                title="Add another sub-item"
+                              >
+                                + Add another
+                              </button>
                               <div className="sub-edit-actions">
                                 <button className="btn sm ghost" onClick={cancelEditAgenda}>Cancel</button>
                                 <button className="btn sm primary" onClick={saveEditAgenda}>Done</button>
@@ -456,7 +482,7 @@ export function HorizontalView({
                               <div className="title">{a.item}</div>
                               {subs.length > 0 && (
                                 <ol className="sub-list">
-                                  {subs.slice(0, 4).map((s, i) => (
+                                  {subs.map((s, i) => (
                                     <li key={i}>{s}</li>
                                   ))}
                                 </ol>
