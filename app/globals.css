@@ -1804,3 +1804,17 @@ table.pivot tbody td.tri-cell.archived-col {
   color: var(--text-muted);
   line-height: 1.4;
 }
+
+/* "Remove" button in the meeting attendance segmented control */
+.me-section-hint {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin: -2px 0 8px 0;
+  line-height: 1.4;
+}
+.me-seg button.remove:hover { color: var(--danger); }
+.me-seg button.remove.on {
+  background: var(--danger);
+  color: var(--accent-fg);
+  font-weight: 600;
+}

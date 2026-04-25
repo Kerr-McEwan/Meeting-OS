@@ -73,6 +73,16 @@ export function MeetingEditModal({
   if (!open || !meeting) return null;
 
   const setStatus = (profileId: string, status: AttendanceState) => {
+    // If we're about to remove someone who currently has access, confirm first.
+    const previous = attendance[profileId];
+    if (status === 'out' && (previous === 'in' || previous === 'apology')) {
+      const person = team.find((t) => t.id === profileId);
+      const name = person?.name || 'this person';
+      const ok = window.confirm(
+        `Remove ${name} from this meeting?\n\nThey'll lose access to its notes, decisions, and actions once you save. They'll keep access to other meetings they're still invited to.`,
+      );
+      if (!ok) return;
+    }
     setAttendance((prev) => ({ ...prev, [profileId]: status }));
     // Demote from chair if they're no longer attending.
     if (status !== 'in' && chairId === profileId) setChairId(null);
@@ -183,6 +193,9 @@ export function MeetingEditModal({
 
           <div className="me-section">
             <div className="me-section-label">Who</div>
+            <div className="me-section-hint">
+              Removing someone from a meeting takes away their access to its notes, decisions, and actions.
+            </div>
             <div className="me-roster">
               {roster.map((p) => {
                 const status = attendance[p.id] || 'out';
@@ -217,10 +230,10 @@ export function MeetingEditModal({
                       </button>
                       <button
                         type="button"
-                        className={status === 'out' ? 'on' : ''}
+                        className={`remove ${status === 'out' ? 'on' : ''}`}
                         onClick={() => setStatus(p.id, 'out')}
                       >
-                        Not invited
+                        Remove
                       </button>
                     </div>
                   </div>
