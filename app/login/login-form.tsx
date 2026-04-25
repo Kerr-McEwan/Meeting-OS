@@ -54,7 +54,10 @@ export default function LoginForm({ allowedDomains, errorCode, next }: Props) {
     setError(null);
     const trimmed = email.trim().toLowerCase();
     if (!isEmailAllowed(trimmed)) {
-      setError(`Use a company email (${allowedDomains.map((d) => '@' + d).join(' or ')}).`);
+      const allowedHint = allowedDomains.length
+        ? ` (allowed: ${allowedDomains.map((d) => '@' + d).join(' or ')})`
+        : '';
+      setError(`Enter a valid email address${allowedHint}.`);
       return;
     }
 
@@ -151,7 +154,11 @@ export default function LoginForm({ allowedDomains, errorCode, next }: Props) {
               </button>
             </form>
             <div className="login-foot">
-              Only <strong>{allowedDomains.map((d) => '@' + d).join(' and ')}</strong> addresses can sign in.
+              {allowedDomains.length > 0 ? (
+                <>Only <strong>{allowedDomains.map((d) => '@' + d).join(' and ')}</strong> addresses can sign in.</>
+              ) : (
+                <>You&rsquo;ll only see meetings you&rsquo;ve been invited to. If you don&rsquo;t see any, ask your admin to add you.</>
+              )}
             </div>
           </>
         )}
