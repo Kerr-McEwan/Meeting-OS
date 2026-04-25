@@ -30,7 +30,7 @@ export function MeetingEditModal({
   team: TeamMember[];
   onClose: () => void;
   onSave: (patch: MeetingEditPatch) => Promise<void>;
-  onAddTeammate: (name: string) => Promise<TeamMember | null>;
+  onAddTeammate: (input: { name: string; email: string }) => Promise<{ member: TeamMember | null; manualInviteLink?: string | null; error?: string | null }>;
   onArchive: () => Promise<void>;
   onRestore: () => Promise<void>;
 }) {
@@ -52,6 +52,10 @@ export function MeetingEditModal({
   const [attendance, setAttendance] = useState<Record<string, AttendanceState>>({});
   const [addingTeammate, setAddingTeammate] = useState(false);
   const [newTeammateName, setNewTeammateName] = useState('');
+  const [newTeammateEmail, setNewTeammateEmail] = useState('');
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [manualInviteLink, setManualInviteLink] = useState<string | null>(null);
+  const [inviting, setInviting] = useState(false);
   const [saving, setSaving] = useState(false);
   const newTeammateRef = useRef<HTMLInputElement | null>(null);
 
@@ -85,13 +89,28 @@ export function MeetingEditModal({
 
   const handleAddTeammate = async () => {
     const name = newTeammateName.trim();
-    if (!name) return;
-    const created = await onAddTeammate(name);
-    if (created) {
+    const email = newTeammateEmail.trim().toLowerCase();
+    if (!name || !email || inviting) return;
+    setInviting(true);
+    setInviteError(null);
+    setManualInviteLink(null);
+    const result = await onAddTeammate({ name, email });
+    setInviting(false);
+    if (result.error) {
+      setInviteError(result.error);
+      return;
+    }
+    if (result.manualInviteLink) {
+      setManualInviteLink(result.manualInviteLink);
+    }
+    if (result.member) {
       // Auto-mark the new teammate as attending.
-      setAttendance((prev) => ({ ...prev, [created.id]: 'in' }));
-      setNewTeammateName('');
-      setAddingTeammate(false);
+      setAttendance((prev) => ({ ...prev, [result.member!.id]: 'in' }));
+      if (!result.manualInviteLink) {
+        setNewTeammateName('');
+        setNewTeammateEmail('');
+        setAddingTeammate(false);
+      }
     }
   };
 
@@ -209,31 +228,91 @@ export function MeetingEditModal({
               })}
 
               {addingTeammate ? (
-                <div className="me-row me-add-row">
-                  <span className="me-add-spacer" />
-                  <input
-                    ref={newTeammateRef}
-                    autoFocus
-                    className="field-input sm"
-                    placeholder="Full name"
-                    value={newTeammateName}
-                    onChange={(e) => setNewTeammateName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleAddTeammate();
-                      if (e.key === 'Escape') { setAddingTeammate(false); setNewTeammateName(''); }
-                    }}
-                    style={{ flex: 1 }}
-                  />
-                  <button
-                    className="btn sm primary"
-                    disabled={!newTeammateName.trim()}
-                    onClick={handleAddTeammate}
-                  >
-                    Add
-                  </button>
-                  <button className="btn sm ghost" onClick={() => { setAddingTeammate(false); setNewTeammateName(''); }}>
-                    Cancel
-                  </button>
+                <div className="me-invite-card">
+                  <div className="me-invite-fields">
+                    <input
+                      ref={newTeammateRef}
+                      autoFocus
+                      className="field-input sm"
+                      placeholder="Full name"
+                      value={newTeammateName}
+                      onChange={(e) => setNewTeammateName(e.target.value)}
+                      disabled={inviting}
+                    />
+                    <input
+                      type="email"
+                      className="field-input sm"
+                      placeholder="work@email.co.uk"
+                      value={newTeammateEmail}
+                      onChange={(e) => setNewTeammateEmail(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleAddTeammate();
+                        if (e.key === 'Escape') {
+                          setAddingTeammate(false);
+                          setNewTeammateName('');
+                          setNewTeammateEmail('');
+                          setInviteError(null);
+                          setManualInviteLink(null);
+                        }
+                      }}
+                      disabled={inviting}
+                    />
+                  </div>
+                  <div className="me-invite-actions">
+                    <button
+                      className="btn sm primary"
+                      disabled={!newTeammateName.trim() || !newTeammateEmail.trim() || inviting}
+                      onClick={handleAddTeammate}
+                    >
+                      {inviting ? 'Inviting…' : 'Invite & add to meeting'}
+                    </button>
+                    <button
+                      className="btn sm ghost"
+                      onClick={() => {
+                        setAddingTeammate(false);
+                        setNewTeammateName('');
+                        setNewTeammateEmail('');
+                        setInviteError(null);
+                        setManualInviteLink(null);
+                      }}
+                      disabled={inviting}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  {inviteError && <div className="me-invite-error">{inviteError}</div>}
+                  {manualInviteLink && (
+                    <div className="me-invite-link">
+                      <div className="me-invite-link-msg">
+                        Email couldn&rsquo;t be sent. Copy this link and send it to <strong>{newTeammateEmail}</strong> via Teams or another channel:
+                      </div>
+                      <input
+                        readOnly
+                        className="field-input sm"
+                        value={manualInviteLink}
+                        onClick={(e) => (e.target as HTMLInputElement).select()}
+                      />
+                      <div className="me-invite-actions">
+                        <button
+                          className="btn sm primary"
+                          onClick={() => navigator.clipboard?.writeText(manualInviteLink)}
+                        >
+                          Copy link
+                        </button>
+                        <button
+                          className="btn sm ghost"
+                          onClick={() => {
+                            setAddingTeammate(false);
+                            setNewTeammateName('');
+                            setNewTeammateEmail('');
+                            setManualInviteLink(null);
+                          }}
+                        >
+                          Done
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <button
@@ -241,7 +320,7 @@ export function MeetingEditModal({
                   className="me-add-btn"
                   onClick={() => setAddingTeammate(true)}
                 >
-                  + Add teammate
+                  + Invite a new teammate by email
                 </button>
               )}
             </div>

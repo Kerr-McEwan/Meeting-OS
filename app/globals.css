@@ -1706,3 +1706,101 @@ table.pivot tbody td.tri-cell.archived-col {
   font-size: 12.5px;
   margin-top: 4px;
 }
+
+/* ---------- Invite teammate (2-field form in AssigneePicker) ---------- */
+.ap-add-card {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  margin-top: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.ap-add-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ap-add-input.wide {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+}
+.ap-add-input.wide:focus { border-color: var(--accent); }
+.ap-add-actions {
+  display: flex;
+  gap: 6px;
+}
+.ap-add-error {
+  font-size: 11.5px;
+  color: var(--danger);
+  background: var(--danger-soft);
+  border: 1px solid color-mix(in oklch, var(--danger) 25%, transparent);
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+.ap-add-link {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.ap-add-link-msg {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* ---------- Invite teammate (in MeetingEditModal) ---------- */
+.me-invite-card {
+  padding: 12px;
+  background: var(--surface-2);
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.me-invite-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.me-invite-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.me-invite-error {
+  font-size: 11.5px;
+  color: var(--danger);
+  background: var(--danger-soft);
+  border: 1px solid color-mix(in oklch, var(--danger) 25%, transparent);
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+.me-invite-link {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.me-invite-link-msg {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}

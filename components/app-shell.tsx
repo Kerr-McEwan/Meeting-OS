@@ -243,34 +243,36 @@ export function AppShell({
       await supabase.from('actions').update({ status }).eq('id', id);
     },
 
-    addTeamMember: async (rawName: string) => {
-      const name = rawName.trim();
-      if (!name) return null;
-      const initials = (() => {
-        const parts = name.split(/\s+/);
-        return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || name.slice(0, 2).toUpperCase();
-      })();
-      // Deterministic-ish hue per name so avatar colours are stable.
-      let hash = 0;
-      for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
-      const color = `oklch(0.70 0.10 ${hash % 360})`;
-
-      const id = crypto.randomUUID();
-      const row = { id, full_name: name, initials, color, is_guest: true, email: null };
-      const { data, error } = await supabase.from('profiles').insert(row).select().single();
-      if (error || !data) {
-        console.error('[addTeamMember]', error);
-        return null;
+    inviteTeammate: async ({ name, email, meetingId }) => {
+      try {
+        const res = await fetch('/api/invite-attendee', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, meetingId }),
+        });
+        const json = await res.json();
+        if (!res.ok || json.error) {
+          return { member: null, error: json.error || `Invite failed (HTTP ${res.status})` };
+        }
+        const member = json.member as TeamMember;
+        // Add to local team list if not already there.
+        setTeam((prev) => (prev.some((p) => p.id === member.id) ? prev : [...prev, member]));
+        // Add to local meeting attendance.
+        setMeetings((prev) =>
+          prev.map((m) =>
+            m.id === meetingId && !m.attendees.includes(member.id)
+              ? { ...m, attendees: [...m.attendees, member.id] }
+              : m,
+          ),
+        );
+        return {
+          member,
+          manualInviteLink: json.manualInviteLink ?? null,
+          error: null,
+        };
+      } catch (err) {
+        return { member: null, error: (err as Error).message || 'Invite failed' };
       }
-      const member: TeamMember = {
-        id: data.id,
-        name: data.full_name || name,
-        role: data.role || 'Guest',
-        initials: data.initials || initials,
-        color: data.color || color,
-      };
-      setTeam((prev) => [...prev, member]);
-      return member;
     },
 
     ensureAttendee: async (meetingId: string, profileId: string) => {
@@ -626,7 +628,9 @@ export function AppShell({
         team={team}
         onClose={() => setEditingMeetingId(null)}
         onSave={(patch) => onSaveMeetingEdit(editingMeeting!.id, patch)}
-        onAddTeammate={handlers.addTeamMember}
+        onAddTeammate={(input) =>
+          handlers.inviteTeammate({ ...input, meetingId: editingMeeting?.id || '' })
+        }
         onArchive={async () => {
           if (!editingMeeting) return;
           await onArchiveMeeting(editingMeeting.id);

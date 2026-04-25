@@ -30,22 +30,38 @@ export function AssigneePicker({
   team: TeamMember[];
   value: string | null;
   onChange: (id: string) => void;
-  onAddTeammate?: (name: string) => Promise<TeamMember | null>;
+  onAddTeammate?: (input: { name: string; email: string }) => Promise<{ member: TeamMember | null; manualInviteLink?: string | null; error?: string | null }>;
 }) {
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState('');
+  const [newEmail, setNewEmail] = useState('');
   const [busy, setBusy] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [manualLink, setManualLink] = useState<string | null>(null);
 
   const submit = async () => {
     const name = newName.trim();
-    if (!name || !onAddTeammate || busy) return;
+    const email = newEmail.trim().toLowerCase();
+    if (!name || !email || !onAddTeammate || busy) return;
     setBusy(true);
-    const created = await onAddTeammate(name);
+    setErrorMsg(null);
+    setManualLink(null);
+    const result = await onAddTeammate({ name, email });
     setBusy(false);
-    if (created) {
-      onChange(created.id);
-      setNewName('');
-      setAdding(false);
+    if (result.error) {
+      setErrorMsg(result.error);
+      return;
+    }
+    if (result.manualInviteLink) {
+      setManualLink(result.manualInviteLink);
+    }
+    if (result.member) {
+      onChange(result.member.id);
+      if (!result.manualInviteLink) {
+        setNewName('');
+        setNewEmail('');
+        setAdding(false);
+      }
     }
   };
 
@@ -65,46 +81,87 @@ export function AssigneePicker({
       ))}
 
       {onAddTeammate && (adding ? (
-        <span className="ap-chip ap-add-form">
-          <input
-            autoFocus
-            className="ap-add-input"
-            placeholder="Name…"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') submit();
-              if (e.key === 'Escape') { setAdding(false); setNewName(''); }
-            }}
-            disabled={busy}
-          />
-          <button
-            type="button"
-            className="ap-add-go"
-            onClick={submit}
-            disabled={!newName.trim() || busy}
-            aria-label="Add teammate"
-          >
-            {busy ? '…' : '✓'}
-          </button>
-          <button
-            type="button"
-            className="ap-add-cancel"
-            onClick={() => { setAdding(false); setNewName(''); }}
-            aria-label="Cancel"
-          >
-            ×
-          </button>
-        </span>
+        <div className="ap-add-card">
+          <div className="ap-add-fields">
+            <input
+              autoFocus
+              className="ap-add-input wide"
+              placeholder="Full name"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              disabled={busy}
+            />
+            <input
+              type="email"
+              className="ap-add-input wide"
+              placeholder="work@email.co.uk"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') submit();
+                if (e.key === 'Escape') { setAdding(false); setNewName(''); setNewEmail(''); setErrorMsg(null); setManualLink(null); }
+              }}
+              disabled={busy}
+            />
+          </div>
+          <div className="ap-add-actions">
+            <button
+              type="button"
+              className="btn sm primary"
+              onClick={submit}
+              disabled={!newName.trim() || !newEmail.trim() || busy}
+            >
+              {busy ? 'Inviting…' : 'Invite'}
+            </button>
+            <button
+              type="button"
+              className="btn sm ghost"
+              onClick={() => { setAdding(false); setNewName(''); setNewEmail(''); setErrorMsg(null); setManualLink(null); }}
+              disabled={busy}
+            >
+              Cancel
+            </button>
+          </div>
+          {errorMsg && <div className="ap-add-error">{errorMsg}</div>}
+          {manualLink && (
+            <div className="ap-add-link">
+              <div className="ap-add-link-msg">
+                Email couldn&rsquo;t be sent. Copy this link and paste it to <strong>{newEmail}</strong> in Teams or another channel:
+              </div>
+              <input
+                readOnly
+                className="ap-add-input wide"
+                value={manualLink}
+                onClick={(e) => (e.target as HTMLInputElement).select()}
+              />
+              <button
+                type="button"
+                className="btn sm primary"
+                onClick={() => {
+                  navigator.clipboard?.writeText(manualLink);
+                }}
+              >
+                Copy link
+              </button>
+              <button
+                type="button"
+                className="btn sm ghost"
+                onClick={() => { setAdding(false); setNewName(''); setNewEmail(''); setManualLink(null); }}
+              >
+                Done
+              </button>
+            </div>
+          )}
+        </div>
       ) : (
         <button
           type="button"
           className="ap-chip ap-add"
           onClick={() => setAdding(true)}
-          title="Add a new teammate"
+          title="Invite a new teammate by email"
         >
           <span className="ap-add-plus">+</span>
-          <span className="ap-name">Add</span>
+          <span className="ap-name">Invite</span>
         </button>
       ))}
     </div>

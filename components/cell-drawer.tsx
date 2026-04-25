@@ -30,7 +30,7 @@ export interface CellDrawerHandlers {
   ) => Promise<void>;
   removeAction: (id: string) => void;
   setActionStatus: (id: string, status: ActionStatus) => void;
-  addTeamMember: (name: string) => Promise<TeamMember | null>;
+  inviteTeammate: (input: { name: string; email: string; meetingId: string }) => Promise<{ member: TeamMember | null; manualInviteLink?: string | null; error?: string | null }>;
   ensureAttendee: (meetingId: string, profileId: string) => Promise<void>;
 }
 
@@ -166,6 +166,13 @@ export function CellDrawer({
   }, [selected, agenda, setSelected, onClose]);
 
   if (!selected || !a || !m) return null;
+
+  // Wrap inviteTeammate so AssigneePicker only needs to pass name+email; we
+  // inject the current meeting ID so the new teammate is recorded as an
+  // attendee of THIS meeting.
+  const meetingId = m.id;
+  const inviteWithMeeting = (input: { name: string; email: string }) =>
+    handlers.inviteTeammate({ ...input, meetingId });
 
   const saveNotes = () => {
     handlers.saveCell(a.id, m.id, notes, status);
@@ -344,7 +351,7 @@ export function CellDrawer({
                             team={attendees}
                             value={editDecisionOwner}
                             onChange={setEditDecisionOwner}
-                            onAddTeammate={handlers.addTeamMember}
+                            onAddTeammate={inviteWithMeeting}
                           />
                           <div className="edit-actions">
                             <button className="btn sm ghost" onClick={cancelEditDecision}>Cancel</button>
@@ -409,7 +416,7 @@ export function CellDrawer({
                       team={attendees}
                       value={newDecisionOwner}
                       onChange={setNewDecisionOwner}
-                      onAddTeammate={handlers.addTeamMember}
+                      onAddTeammate={inviteWithMeeting}
                     />
                   </div>
                   <button
@@ -456,7 +463,7 @@ export function CellDrawer({
                                 team={attendees}
                                 value={editActionOwner}
                                 onChange={setEditActionOwner}
-                                onAddTeammate={handlers.addTeamMember}
+                                onAddTeammate={inviteWithMeeting}
                               />
                             </div>
                             <div>
@@ -547,7 +554,7 @@ export function CellDrawer({
                       team={attendees}
                       value={newActionOwner}
                       onChange={setNewActionOwner}
-                      onAddTeammate={handlers.addTeamMember}
+                      onAddTeammate={inviteWithMeeting}
                     />
                   </div>
                   <div>
