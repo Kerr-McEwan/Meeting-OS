@@ -1849,3 +1849,99 @@ table.pivot tbody td.tri-cell.archived-col {
   place-items: center;
 }
 .sub-remove:hover { color: var(--danger); background: var(--danger-soft); }
+
+/* ---------- Issue minutes modal ---------- */
+.issue-minutes-modal {
+  width: 760px;
+  max-width: 94vw;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+}
+.issue-minutes-modal .modal-body {
+  overflow-y: auto;
+  flex: 1;
+}
+.im-status {
+  padding: 24px 0;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.im-error {
+  background: var(--danger-soft);
+  border: 1px solid color-mix(in oklch, var(--danger) 25%, transparent);
+  border-radius: 6px;
+  padding: 12px 14px;
+  font-size: 12.5px;
+  color: var(--danger);
+  line-height: 1.45;
+}
+.im-success {
+  background: color-mix(in oklch, var(--success) 12%, transparent);
+  border: 1px solid color-mix(in oklch, var(--success) 30%, transparent);
+  border-radius: 6px;
+  padding: 14px 16px;
+  font-size: 13px;
+  color: var(--text);
+}
+.im-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.im-subject {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text);
+  margin-top: 2px;
+}
+.im-recipients {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.im-recipient-chip {
+  display: inline-flex;
+  padding: 2px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.im-warn {
+  font-size: 12px;
+  color: var(--warn);
+  font-style: italic;
+}
+.im-preview-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+.im-preview {
+  width: 100%;
+  height: 540px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.me-minutes-btn {
+  color: var(--accent);
+  border-color: color-mix(in oklch, var(--accent) 30%, transparent);
+}
+.me-minutes-btn:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}

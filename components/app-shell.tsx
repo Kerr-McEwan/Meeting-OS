@@ -9,6 +9,7 @@ import { ActionLog } from './action-log';
 import { DecisionLog } from './decision-log';
 import { NewSeriesModal, type NewSeriesInput } from './new-series-modal';
 import { MeetingEditModal, type MeetingEditPatch } from './meeting-edit-modal';
+import { IssueMinutesModal } from './issue-minutes-modal';
 import { TweaksPanel, applySettings } from './tweaks-panel';
 import { createClient } from '@/lib/supabase/browser';
 import { DEFAULT_TWEAKS } from '@/lib/types';
@@ -82,6 +83,10 @@ export function AppShell({
   const [newSeriesOpen, setNewSeriesOpen] = useState(false);
   const [editingMeetingId, setEditingMeetingId] = useState<string | null>(null);
   const editingMeeting = editingMeetingId ? meetings.find((m) => m.id === editingMeetingId) || null : null;
+  const [issuingMinutesId, setIssuingMinutesId] = useState<string | null>(null);
+  const issuingMinutesMeeting = issuingMinutesId
+    ? meetings.find((m) => m.id === issuingMinutesId) || null
+    : null;
 
   const [settings, setSettings] = useState<TweaksSettings>(() => {
     if (typeof window === 'undefined') return DEFAULT_TWEAKS;
@@ -641,6 +646,18 @@ export function AppShell({
           await onRestoreMeeting(editingMeeting.id);
           setEditingMeetingId(null);
         }}
+        onIssueMinutes={() => {
+          if (!editingMeeting) return;
+          // Open the minutes modal. The edit modal stays open behind it so
+          // users can return to attendance/date editing after sending.
+          setIssuingMinutesId(editingMeeting.id);
+        }}
+      />
+
+      <IssueMinutesModal
+        open={!!issuingMinutesMeeting}
+        meeting={issuingMinutesMeeting}
+        onClose={() => setIssuingMinutesId(null)}
       />
     </div>
   );

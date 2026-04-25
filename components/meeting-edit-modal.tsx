@@ -24,6 +24,7 @@ export function MeetingEditModal({
   onAddTeammate,
   onArchive,
   onRestore,
+  onIssueMinutes,
 }: {
   open: boolean;
   meeting: Meeting | null;
@@ -33,6 +34,7 @@ export function MeetingEditModal({
   onAddTeammate: (input: { name: string; email: string }) => Promise<{ member: TeamMember | null; manualInviteLink?: string | null; error?: string | null }>;
   onArchive: () => Promise<void>;
   onRestore: () => Promise<void>;
+  onIssueMinutes: () => void;
 }) {
   const initial = useMemo(() => {
     if (!meeting) return null;
@@ -365,6 +367,14 @@ export function MeetingEditModal({
               Archive meeting
             </button>
           )}
+          <button
+            className="btn sm ghost me-minutes-btn"
+            onClick={onIssueMinutes}
+            disabled={saving}
+            title="Email a summary of this meeting to all attendees"
+          >
+            Issue minutes
+          </button>
           <div className="spacer" />
           <button className="btn sm ghost" onClick={onClose} disabled={saving}>Cancel</button>
           <button className="btn sm primary" onClick={handleSave} disabled={!date || saving}>
