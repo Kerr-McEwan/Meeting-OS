@@ -302,9 +302,45 @@ export function CellDrawer({
               <textarea
                 className="field-textarea"
                 value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                onChange={(e) => {
+                  // Auto-convert "- " or "* " at start of a line to "• ".
+                  let v = e.target.value;
+                  v = v.replace(/(^|\n)([-*])\s/g, '$1• ');
+                  setNotes(v);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter') return;
+                  const ta = e.currentTarget;
+                  const start = ta.selectionStart;
+                  const value = ta.value;
+                  const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+                  const currentLine = value.slice(lineStart, start);
+                  const bulletMatch = currentLine.match(/^(•\s+)/);
+                  if (!bulletMatch) return;
+                  e.preventDefault();
+                  // Empty bullet line + Enter: clear it and break the list.
+                  if (currentLine.trim() === '•') {
+                    const before = value.slice(0, lineStart);
+                    const after = value.slice(start);
+                    setNotes(before + after);
+                    requestAnimationFrame(() => {
+                      ta.selectionStart = ta.selectionEnd = lineStart;
+                    });
+                    return;
+                  }
+                  // Otherwise: continue the list.
+                  const next = value.slice(0, start) + '\n• ' + value.slice(start);
+                  setNotes(next);
+                  requestAnimationFrame(() => {
+                    const pos = start + 3;
+                    ta.selectionStart = ta.selectionEnd = pos;
+                  });
+                }}
                 placeholder={m.upcoming ? 'Capture notes as the conversation unfolds…' : 'No notes captured.'}
               />
+              <div className="field-hint" style={{ marginTop: 4 }}>
+                Tip: type <code>-</code> at the start of a line for a bullet (• ). Press Enter to continue the list, Enter on an empty bullet to break out.
+              </div>
               <div style={{ marginTop: 16, display: 'flex', gap: 20 }}>
                 <div style={{ flex: 1 }}>
                   <div className="field-label">Status</div>

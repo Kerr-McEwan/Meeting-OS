@@ -614,7 +614,7 @@ export function HorizontalView({
         return (
           <div className="hover-preview" style={{ left: x, top: y }}>
             <div className="hp-head">{a.item} · {m.label} · Notes</div>
-            <div>{c.notes}</div>
+            <div style={{ whiteSpace: 'pre-wrap' }}>{c.notes}</div>
             {c.status === 'carry' && (
               <div style={{ marginTop: 6 }}>
                 <StatusPill value="carry" />
