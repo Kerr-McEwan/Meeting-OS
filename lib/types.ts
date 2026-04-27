@@ -11,6 +11,15 @@ export type CellStatus =
 export type ActionStatus = 'to_action' | 'in_progress' | 'stuck' | 'done' | 'closed';
 export type ActionPriority = 'low' | 'medium' | 'high';
 
+export type DecisionStatus = 'open' | 'under_review' | 'discuss' | 'closed';
+export const DECISION_STATUS_ORDER: DecisionStatus[] = ['open', 'under_review', 'discuss', 'closed'];
+export const DECISION_STATUS_LABELS: Record<DecisionStatus, string> = {
+  open: 'Open',
+  under_review: 'Under Review',
+  discuss: 'Discuss',
+  closed: 'Closed',
+};
+
 export interface Profile {
   id: string;
   email: string | null;
@@ -78,6 +87,7 @@ export interface Decision {
   section_id: string | null;
   owner_id: string | null;
   text: string;
+  status: DecisionStatus;
   created_at: string;
 }
 

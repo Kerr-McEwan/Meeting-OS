@@ -90,6 +90,27 @@ function statusColor(status: string): string {
   }
 }
 
+const DECISION_STATUS_LABELS_INLINE: Record<string, string> = {
+  open: 'Open',
+  under_review: 'Under Review',
+  discuss: 'Discuss',
+  closed: 'Closed',
+};
+
+function decisionStatusColor(status: string): string {
+  switch (status) {
+    case 'closed':
+      return SUCCESS;
+    case 'under_review':
+      return ACCENT;
+    case 'discuss':
+      return '#7a5cc7';
+    case 'open':
+    default:
+      return TEXT_MUTED;
+  }
+}
+
 export function renderMinutesHtml(p: MinutesPayload): string {
   const meetingDate = fmtDateLong(p.meeting.meeting_date);
   const meetingTime = p.meeting.meeting_time ? p.meeting.meeting_time.slice(0, 5) : null;
@@ -127,15 +148,19 @@ export function renderMinutesHtml(p: MinutesPayload): string {
 
     const decisionsCell = decs.length
       ? `<ul style="margin:0;padding:0;list-style:none;">${decs
-          .map(
-            (d) => `
+          .map((d) => {
+            const dStatus = (d.status || 'open') as string;
+            const dColor = decisionStatusColor(dStatus);
+            const dLabel = DECISION_STATUS_LABELS_INLINE[dStatus] || dStatus;
+            return `
             <li style="padding:6px 0;border-bottom:1px solid ${BORDER};font-size:13px;line-height:1.4;color:${TEXT};">
               ${escapeHtml(d.text)}
-              <div style="font-size:11px;color:${TEXT_DIM};margin-top:2px;">
+              <div style="font-size:11px;color:${TEXT_DIM};margin-top:3px;">
                 Owner: ${escapeHtml(personName(p.team, d.owner_id))}
+                · <span style="color:${dColor};font-weight:600;">${escapeHtml(dLabel)}</span>
               </div>
-            </li>`,
-          )
+            </li>`;
+          })
           .join('')}</ul>`
       : `<div style="color:${TEXT_DIM};font-style:italic;font-size:12px;">—</div>`;
 

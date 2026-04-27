@@ -1,7 +1,14 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import type { MeetingSeries, ActionStatus, CellStatus } from '@/lib/types';
+import {
+  DECISION_STATUS_LABELS,
+  DECISION_STATUS_ORDER,
+  type ActionStatus,
+  type CellStatus,
+  type DecisionStatus,
+  type MeetingSeries,
+} from '@/lib/types';
 
 type IconName =
   | 'home' | 'grid' | 'check' | 'lightbulb' | 'calendar' | 'filter'
@@ -250,3 +257,81 @@ export function SearchInput({
     </div>
   );
 }
+
+export function DecisionStatusPill({
+  value,
+  onChange,
+}: {
+  value: DecisionStatus;
+  onChange?: (s: DecisionStatus) => void;
+}) {
+  const cycle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onChange) return;
+    const i = DECISION_STATUS_ORDER.indexOf(value);
+    onChange(DECISION_STATUS_ORDER[(i + 1) % DECISION_STATUS_ORDER.length]);
+  };
+  return (
+    <span
+      className={`d-status ${value}`}
+      onClick={cycle}
+      title={onChange ? 'Click to cycle status' : undefined}
+    >
+      {DECISION_STATUS_LABELS[value] || value}
+    </span>
+  );
+}
+
+export function DecisionStatusDropdown({
+  value,
+  onChange,
+}: {
+  value: DecisionStatus;
+  onChange: (s: DecisionStatus) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLSpanElement | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
+  return (
+    <span className="status-dd" ref={ref}>
+      <button
+        type="button"
+        className={`d-status status-trigger ${value}`}
+        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+      >
+        <span>{DECISION_STATUS_LABELS[value] || value}</span>
+        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+          <path d="M2 4l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {open && (
+        <div className="status-menu" role="listbox">
+          {DECISION_STATUS_ORDER.map((s) => (
+            <button
+              key={s}
+              type="button"
+              className={`status-menu-item ${s === value ? 'selected' : ''}`}
+              onClick={(e) => { e.stopPropagation(); onChange(s); setOpen(false); }}
+            >
+              <span className={`status-swatch d-${s}`} />
+              <span>{DECISION_STATUS_LABELS[s]}</span>
+              {s === value && (
+                <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" style={{ marginLeft: 'auto' }}>
+                  <path d="M2.5 6.5l2.5 2.5 4.5-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </span>
+  );
+}
+

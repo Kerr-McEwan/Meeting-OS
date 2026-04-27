@@ -1,9 +1,19 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Avatar, SearchInput } from './atoms';
+import { Avatar, DecisionStatusDropdown, SearchInput } from './atoms';
 import { formatDate, formatDateLong, personById } from '@/lib/utils';
-import type { AgendaItem, Decision, InitialData, Meeting, MeetingSeries, Section } from '@/lib/types';
+import {
+  DECISION_STATUS_LABELS,
+  DECISION_STATUS_ORDER,
+  type AgendaItem,
+  type Decision,
+  type DecisionStatus,
+  type InitialData,
+  type Meeting,
+  type MeetingSeries,
+  type Section,
+} from '@/lib/types';
 
 export function DecisionLog({
   data,
@@ -12,6 +22,7 @@ export function DecisionLog({
   meetings,
   decisions,
   currentSeries,
+  setDecisionStatus,
 }: {
   data: InitialData;
   agenda: AgendaItem[];
@@ -19,13 +30,22 @@ export function DecisionLog({
   meetings: Meeting[];
   decisions: Decision[];
   currentSeries: MeetingSeries | null;
+  setDecisionStatus: (id: string, status: DecisionStatus) => void;
 }) {
   const [meetingFilter, setMeetingFilter] = useState<'all' | string>('all');
+  const [statusFilter, setStatusFilter] = useState<DecisionStatus[]>([
+    'open', 'under_review', 'discuss', 'closed',
+  ]);
   const [query, setQuery] = useState('');
+
+  const toggleStatus = (s: DecisionStatus) => {
+    setStatusFilter((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
+  };
 
   const q = query.trim().toLowerCase();
   const filtered = decisions.filter((d) => {
     if (meetingFilter !== 'all' && d.meeting_id !== meetingFilter) return false;
+    if (!statusFilter.includes((d.status || 'open') as DecisionStatus)) return false;
     if (q) {
       const ag = agenda.find((a) => a.id === d.agenda_item_id);
       const owner = personById(data.team, d.owner_id ?? '');
@@ -46,6 +66,20 @@ export function DecisionLog({
         <SearchInput value={query} onChange={setQuery} placeholder="Search decisions…" />
       </div>
       <div className="filter-bar">
+        <span className="chip-label">Status</span>
+        {DECISION_STATUS_ORDER.map((s) => (
+          <button
+            key={s}
+            className={`chip-btn ${statusFilter.includes(s) ? 'active' : ''}`}
+            onClick={() => toggleStatus(s)}
+          >
+            {DECISION_STATUS_LABELS[s]}
+            <span className="count">
+              {decisions.filter((d) => (d.status || 'open') === s).length}
+            </span>
+          </button>
+        ))}
+        <span className="chip-divider" />
         <span className="chip-label">Meeting</span>
         <button
           className={`chip-btn ${meetingFilter === 'all' ? 'active' : ''}`}
@@ -64,7 +98,8 @@ export function DecisionLog({
         <table>
           <thead>
             <tr>
-              <th style={{ width: '50%' }}>Decision</th>
+              <th style={{ width: '40%' }}>Decision</th>
+              <th>Status</th>
               <th>Meeting</th>
               <th>Agenda item</th>
               <th>Owner</th>
@@ -75,7 +110,7 @@ export function DecisionLog({
             {byMeeting.map((g) => (
               <React.Fragment key={g.m.id}>
                 <tr className="group-head">
-                  <td colSpan={5}>
+                  <td colSpan={6}>
                     {g.m.label} · {formatDateLong(g.m.meeting_date)} · {g.rows.length} decision{g.rows.length === 1 ? '' : 's'}
                   </td>
                 </tr>
@@ -85,6 +120,12 @@ export function DecisionLog({
                   return (
                     <tr key={d.id}>
                       <td><div className="cell-title">{d.text}</div></td>
+                      <td>
+                        <DecisionStatusDropdown
+                          value={(d.status || 'open') as DecisionStatus}
+                          onChange={(s) => setDecisionStatus(d.id, s)}
+                        />
+                      </td>
                       <td style={{ color: 'var(--text-muted)' }}>{currentSeries?.name || '—'}</td>
                       <td style={{ color: 'var(--text-muted)' }}>{a?.item || '—'}</td>
                       <td>
@@ -105,7 +146,7 @@ export function DecisionLog({
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={5}><div className="empty-state">No decisions match the current filters.</div></td>
+                <td colSpan={6}><div className="empty-state">No decisions match the current filters.</div></td>
               </tr>
             )}
           </tbody>

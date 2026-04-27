@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Icon, Avatar, StatusPill } from './atoms';
+import { Icon, Avatar, StatusPill, DecisionStatusPill } from './atoms';
 import { AssigneePicker, type SelectedCell } from './horizontal-view';
 import { formatDate, formatDateLong, personById } from '@/lib/utils';
 import type {
@@ -12,6 +12,7 @@ import type {
   Cell,
   CellStatus,
   Decision,
+  DecisionStatus,
   InitialData,
   Meeting,
   Section,
@@ -21,7 +22,8 @@ import type {
 export interface CellDrawerHandlers {
   saveCell: (agendaItemId: string, meetingId: string, notes: string, status: CellStatus) => void;
   addDecision: (input: { meetingId: string; agendaItemId: string; sectionId: string | null; ownerId: string; text: string }) => void;
-  updateDecision: (id: string, patch: { text?: string; owner_id?: string | null }) => Promise<void>;
+  updateDecision: (id: string, patch: { text?: string; owner_id?: string | null; status?: DecisionStatus }) => Promise<void>;
+  setDecisionStatus: (id: string, status: DecisionStatus) => void;
   removeDecision: (id: string) => void;
   addAction: (input: { meetingId: string; agendaItemId: string; ownerId: string; title: string; due: string | null; priority: ActionPriority }) => void;
   updateAction: (
@@ -412,6 +414,10 @@ export function CellDrawer({
                           Owner: {personById(data.team, d.owner_id ?? '')?.name || '— unassigned —'}
                         </div>
                       </span>
+                      <DecisionStatusPill
+                        value={d.status || 'open'}
+                        onChange={(s) => handlers.setDecisionStatus(d.id, s)}
+                      />
                       <button
                         className="btn ghost sm icon"
                         onClick={() => beginEditDecision(d)}

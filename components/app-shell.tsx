@@ -198,7 +198,15 @@ export function AppShell({
     },
 
     addDecision: async ({ meetingId, agendaItemId, sectionId, ownerId, text }) => {
-      const row = { series_id: seriesId, meeting_id: meetingId, agenda_item_id: agendaItemId, section_id: sectionId, owner_id: ownerId, text };
+      const row = {
+        series_id: seriesId,
+        meeting_id: meetingId,
+        agenda_item_id: agendaItemId,
+        section_id: sectionId,
+        owner_id: ownerId,
+        text,
+        status: 'open' as const,
+      };
       const { data, error } = await supabase.from('decisions').insert(row).select().single();
       if (!error && data) setDecisions((prev) => [...prev, data as Decision]);
     },
@@ -210,6 +218,11 @@ export function AppShell({
         console.error('[updateDecision]', error);
         if (before) setDecisions((prev) => prev.map((d) => (d.id === id ? before : d)));
       }
+    },
+    setDecisionStatus: async (id, status) => {
+      setDecisions((prev) => prev.map((d) => (d.id === id ? { ...d, status } : d)));
+      const { error } = await supabase.from('decisions').update({ status }).eq('id', id);
+      if (error) console.error('[setDecisionStatus]', error);
     },
     removeDecision: async (id) => {
       setDecisions((prev) => prev.filter((d) => d.id !== id));
@@ -598,6 +611,7 @@ export function AppShell({
               meetings={seriesMeetings}
               decisions={seriesDecisions}
               currentSeries={currentSeries}
+              setDecisionStatus={handlers.setDecisionStatus}
             />
           )}
         </div>
