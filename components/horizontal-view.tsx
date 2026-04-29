@@ -181,6 +181,7 @@ interface HorizontalViewProps {
   cellStyle: TweaksSettings['cellStyle'];
   onAddAgenda: (item: string) => void;
   onUpdateAgenda: (id: string, patch: { sub_items: string[] }) => Promise<void>;
+  onDeleteAgenda: (id: string) => Promise<void>;
   onAddMeeting: (date: string) => Promise<Meeting | null>;
   onEditMeeting: (meetingId: string) => void;
 }
@@ -198,6 +199,7 @@ export function HorizontalView({
   cellStyle,
   onAddAgenda,
   onUpdateAgenda,
+  onDeleteAgenda,
   onAddMeeting,
   onEditMeeting,
 }: HorizontalViewProps) {
@@ -228,6 +230,26 @@ export function HorizontalView({
     if (!editingAgendaId) return;
     const cleaned = subSlots.map((s) => s.trim()).filter((s) => s.length > 0);
     await onUpdateAgenda(editingAgendaId, { sub_items: cleaned });
+    cancelEditAgenda();
+  };
+  const deleteEditingAgenda = async () => {
+    if (!editingAgendaId) return;
+    const item = agenda.find((a) => a.id === editingAgendaId);
+    if (!item) return;
+    const cellCount = cells.filter((c) => c.agenda_item_id === item.id).length;
+    const decCount = decisions.filter((d) => d.agenda_item_id === item.id).length;
+    const actCount = actions.filter((ac) => ac.agenda_item_id === item.id).length;
+    const lines = [
+      `Delete agenda item "${item.item}"?`,
+      '',
+      `This will permanently remove ${cellCount} note cell${cellCount === 1 ? '' : 's'} across every meeting in this series.`,
+      decCount + actCount > 0
+        ? `${decCount} decision${decCount === 1 ? '' : 's'} and ${actCount} action${actCount === 1 ? '' : 's'} will stay in place but lose their link to this agenda row.`
+        : '',
+      'This cannot be undone.',
+    ].filter(Boolean).join('\n');
+    if (!window.confirm(lines)) return;
+    await onDeleteAgenda(item.id);
     cancelEditAgenda();
   };
   const addSubSlot = () => setSubSlots((prev) => [...prev, '']);
@@ -468,6 +490,14 @@ export function HorizontalView({
                                 + Add another
                               </button>
                               <div className="sub-edit-actions">
+                                <button
+                                  className="btn sm ghost agenda-delete-btn"
+                                  onClick={deleteEditingAgenda}
+                                  title="Delete this agenda item permanently"
+                                >
+                                  Delete agenda item
+                                </button>
+                                <span style={{ flex: 1 }} />
                                 <button className="btn sm ghost" onClick={cancelEditAgenda}>Cancel</button>
                                 <button className="btn sm primary" onClick={saveEditAgenda}>Done</button>
                               </div>

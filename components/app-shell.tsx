@@ -327,6 +327,19 @@ export function AppShell({
     }
   };
 
+  const onDeleteAgenda = async (id: string) => {
+    // Optimistically remove from local state, including derived caches.
+    setAgenda((prev) => prev.filter((a) => a.id !== id));
+    setCells((prev) => prev.filter((c) => c.agenda_item_id !== id));
+    setDecisions((prev) => prev.map((d) => (d.agenda_item_id === id ? { ...d, agenda_item_id: null } : d)));
+    setActions((prev) => prev.map((ac) => (ac.agenda_item_id === id ? { ...ac, agenda_item_id: null } : ac)));
+    const { error } = await supabase.from('agenda_items').delete().eq('id', id);
+    if (error) {
+      console.error('[onDeleteAgenda]', error);
+      // No clean rollback for the cascade; reload would be safer.
+    }
+  };
+
   const onAddMeeting = async (dateISO: string) => {
     // Auto-label: "DD Mon" (e.g. "27 Apr"), matching the seed format.
     const d = new Date(dateISO + 'T00:00:00');
@@ -590,6 +603,7 @@ export function AppShell({
               cellStyle={settings.cellStyle}
               onAddAgenda={onAddAgenda}
               onUpdateAgenda={onUpdateAgenda}
+              onDeleteAgenda={onDeleteAgenda}
               onAddMeeting={onAddMeeting}
               onEditMeeting={setEditingMeetingId}
             />

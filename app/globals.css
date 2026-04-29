@@ -2008,3 +2008,12 @@ table.pivot tbody td.tri-cell.archived-col {
 .status-swatch.d-under_review { background: oklch(0.78 0.12 70); }
 .status-swatch.d-discuss      { background: oklch(0.62 0.16 300); }
 .status-swatch.d-closed       { background: oklch(0.60 0.13 150); }
+
+.agenda-delete-btn {
+  color: var(--text-muted);
+}
+.agenda-delete-btn:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
