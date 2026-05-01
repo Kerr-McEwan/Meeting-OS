@@ -515,11 +515,13 @@ export function AppShell({
         cadence: input.series.cadence,
         description: input.series.description,
         color_accent: input.series.color_accent,
+        created_by: user.id,
       })
       .select()
       .single();
     if (seriesErr || !seriesRow) {
-      console.error(seriesErr);
+      console.error('[onCreateSeries] series insert', seriesErr);
+      window.alert(`Couldn't create series: ${seriesErr?.message || 'unknown error'}`);
       return;
     }
 
@@ -531,7 +533,16 @@ export function AppShell({
       { slug: 'close',       name: 'Close',           color: 'oklch(0.70 0.06 100)', sort_order: 5 },
     ].map((s) => ({ ...s, series_id: (seriesRow as MeetingSeries).id }));
 
-    const { data: sectionRows } = await supabase.from('sections').insert(sectionsToInsert).select();
+    const { data: sectionRows, error: sectionErr } = await supabase
+      .from('sections')
+      .insert(sectionsToInsert)
+      .select();
+    if (sectionErr) {
+      console.error('[onCreateSeries] sections insert', sectionErr);
+      window.alert(
+        `Series was created but sections couldn't be added: ${sectionErr.message}.\n\nThis usually means you need to run migration 0012 in Supabase.`,
+      );
+    }
 
     const agendaToInsert = input.agenda.map((a) => ({
       series_id: (seriesRow as MeetingSeries).id,
@@ -539,7 +550,16 @@ export function AppShell({
       sort_order: a.sort_order,
       sub_items: [] as string[],
     }));
-    const { data: agendaRows } = await supabase.from('agenda_items').insert(agendaToInsert).select();
+    const { data: agendaRows, error: agendaErr } = await supabase
+      .from('agenda_items')
+      .insert(agendaToInsert)
+      .select();
+    if (agendaErr) {
+      console.error('[onCreateSeries] agenda insert', agendaErr);
+      window.alert(
+        `Series was created but agenda items couldn't be added: ${agendaErr.message}.\n\nThis usually means you need to run migration 0012 in Supabase.`,
+      );
+    }
 
     setSeriesList((prev) => [...prev, seriesRow as MeetingSeries]);
     setSections((prev) => [...prev, ...((sectionRows as Section[] | null) ?? [])]);
