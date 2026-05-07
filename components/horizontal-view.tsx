@@ -260,6 +260,14 @@ export function HorizontalView({
     }
     cancelEditAgenda();
   };
+  // Shortcut: duplicate the agenda item in its own series. Skips the picker
+  // since "duplicate here" is the most common case.
+  const handleDuplicate = () => {
+    if (!editingAgendaId) return;
+    const item = agenda.find((a) => a.id === editingAgendaId);
+    if (!item) return;
+    handleCopyToSeries(item.series_id);
+  };
   const saveEditAgenda = async () => {
     if (!editingAgendaId) return;
     const cleaned: SubItem[] = subSlots
@@ -607,6 +615,14 @@ export function HorizontalView({
                                     title="Delete this agenda item permanently"
                                   >
                                     Delete agenda item
+                                  </button>
+                                  <button
+                                    className="btn sm ghost"
+                                    onClick={handleDuplicate}
+                                    disabled={copyBusy}
+                                    title="Duplicate this agenda item (with sub-items and discussion points) at the bottom of this series"
+                                  >
+                                    Duplicate
                                   </button>
                                   <button
                                     className="btn sm ghost"
