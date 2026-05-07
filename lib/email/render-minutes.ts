@@ -127,7 +127,15 @@ export function renderMinutesHtml(p: MinutesPayload): string {
     const decs = p.decisions.filter((d) => d.agenda_item_id === a.id && d.meeting_id === p.meeting.id);
     const acts = p.actions.filter((ac) => ac.agenda_item_id === a.id && ac.meeting_id === p.meeting.id);
 
-    const subItems = (a.sub_items || []).filter(Boolean);
+    const subItems = (a.sub_items || []).filter((s) => s && s.text);
+
+    const renderPoints = (points: string[]) => {
+      const cleaned = (points || []).filter(Boolean);
+      if (cleaned.length === 0) return '';
+      return `<ol style="margin:3px 0 0 0;padding-left:18px;list-style-type:lower-alpha;color:${TEXT_DIM};font-size:11.5px;line-height:1.45;">
+        ${cleaned.map((p) => `<li>${escapeHtml(p)}</li>`).join('')}
+      </ol>`;
+    };
 
     const titleCell = `
       <div style="font-weight:600;color:${TEXT};font-size:14px;line-height:1.3;">
@@ -136,7 +144,14 @@ export function renderMinutesHtml(p: MinutesPayload): string {
       ${
         subItems.length
           ? `<ol style="margin:6px 0 0 0;padding-left:18px;color:${TEXT_MUTED};font-size:12px;line-height:1.45;">
-              ${subItems.map((s) => `<li>${escapeHtml(s)}</li>`).join('')}
+              ${subItems
+                .map(
+                  (s) => `<li>
+                    ${escapeHtml(s.text)}
+                    ${renderPoints(s.points || [])}
+                  </li>`,
+                )
+                .join('')}
             </ol>`
           : ''
       }

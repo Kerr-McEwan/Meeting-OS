@@ -2017,3 +2017,51 @@ table.pivot tbody td.tri-cell.archived-col {
   border-color: var(--danger);
   background: var(--danger-soft);
 }
+
+/* Discussion points (a, b, c…) under each sub-item */
+.point-list {
+  list-style-type: lower-alpha;
+  margin: 2px 0 4px 0;
+  padding: 0 0 0 16px;
+  color: var(--text-dim);
+  font-size: 10.5px;
+}
+.point-list li {
+  padding: 1px 0;
+  line-height: 1.4;
+}
+
+.sub-edit-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px dashed var(--border);
+  margin-bottom: 4px;
+}
+.sub-edit-block:last-of-type { border-bottom: none; margin-bottom: 0; }
+.sub-edit-row.sub-edit-point {
+  margin-left: 18px;
+}
+.point-letter {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  font-weight: 600;
+  width: 14px;
+  text-align: right;
+}
+.point-add-btn {
+  align-self: flex-start;
+  margin-left: 18px;
+  background: none;
+  border: 1px dashed var(--border);
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 10.5px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.point-add-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}

@@ -49,13 +49,18 @@ export interface Section {
   sort_order: number;
 }
 
+export interface SubItem {
+  text: string;
+  points: string[];
+}
+
 export interface AgendaItem {
   id: string;
   series_id: string;
   section_id: string | null;
   item: string;
   sort_order: number;
-  sub_items: string[];
+  sub_items: SubItem[];
 }
 
 export interface Meeting {

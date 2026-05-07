@@ -8,6 +8,7 @@ import type {
   AgendaItem,
   Cell,
   Decision,
+  SubItem,
   InitialData,
   Meeting,
   Section,
@@ -180,7 +181,7 @@ interface HorizontalViewProps {
   setSelected: (s: SelectedCell | null) => void;
   cellStyle: TweaksSettings['cellStyle'];
   onAddAgenda: (item: string) => void;
-  onUpdateAgenda: (id: string, patch: { sub_items: string[] }) => Promise<void>;
+  onUpdateAgenda: (id: string, patch: { sub_items: SubItem[] }) => Promise<void>;
   onDeleteAgenda: (id: string) => Promise<void>;
   onAddMeeting: (date: string) => Promise<Meeting | null>;
   onEditMeeting: (meetingId: string) => void;
@@ -209,26 +210,41 @@ export function HorizontalView({
   const [showArchived, setShowArchived] = useState(false);
   const [addingMeeting, setAddingMeeting] = useState(false);
 
-  // Sub-item editor state: which agenda row is expanded, and the slot values.
-  // Slot count is dynamic — starts at max(existing, 4) and grows on demand.
+  // Sub-item editor state. Slot count is dynamic — starts at max(existing, 4)
+  // and grows on demand. Each slot can have its own list of discussion points.
   const [editingAgendaId, setEditingAgendaId] = useState<string | null>(null);
-  const [subSlots, setSubSlots] = useState<string[]>(['', '', '', '']);
+  const [subSlots, setSubSlots] = useState<SubItem[]>([
+    { text: '', points: [] },
+    { text: '', points: [] },
+    { text: '', points: [] },
+    { text: '', points: [] },
+  ]);
+
+  const emptySubSlots = (n: number): SubItem[] =>
+    Array.from({ length: n }, () => ({ text: '', points: [] }));
 
   const beginEditAgenda = (a: AgendaItem) => {
     setEditingAgendaId(a.id);
-    const current = a.sub_items || [];
-    // Show all existing items plus an empty slot to keep typing momentum.
-    // Minimum of 4 slots so the editor doesn't feel cramped on first use.
+    const current = (a.sub_items || []) as SubItem[];
     const slotCount = Math.max(4, current.length + 1);
-    setSubSlots(Array.from({ length: slotCount }, (_, i) => current[i] ?? ''));
+    const slots: SubItem[] = Array.from({ length: slotCount }, (_, i) => ({
+      text: current[i]?.text ?? '',
+      points: current[i]?.points ? [...current[i].points] : [],
+    }));
+    setSubSlots(slots);
   };
   const cancelEditAgenda = () => {
     setEditingAgendaId(null);
-    setSubSlots(['', '', '', '']);
+    setSubSlots(emptySubSlots(4));
   };
   const saveEditAgenda = async () => {
     if (!editingAgendaId) return;
-    const cleaned = subSlots.map((s) => s.trim()).filter((s) => s.length > 0);
+    const cleaned: SubItem[] = subSlots
+      .map((s) => ({
+        text: s.text.trim(),
+        points: s.points.map((p) => p.trim()).filter((p) => p.length > 0),
+      }))
+      .filter((s) => s.text.length > 0);
     await onUpdateAgenda(editingAgendaId, { sub_items: cleaned });
     cancelEditAgenda();
   };
@@ -252,9 +268,24 @@ export function HorizontalView({
     await onDeleteAgenda(item.id);
     cancelEditAgenda();
   };
-  const addSubSlot = () => setSubSlots((prev) => [...prev, '']);
+  const addSubSlot = () =>
+    setSubSlots((prev) => [...prev, { text: '', points: [] }]);
   const removeSubSlot = (i: number) =>
     setSubSlots((prev) => (prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev));
+  const updateSubText = (i: number, text: string) =>
+    setSubSlots((prev) => prev.map((s, idx) => (idx === i ? { ...s, text } : s)));
+  const addPoint = (i: number) =>
+    setSubSlots((prev) => prev.map((s, idx) => (idx === i ? { ...s, points: [...s.points, ''] } : s)));
+  const updatePoint = (i: number, pi: number, text: string) =>
+    setSubSlots((prev) =>
+      prev.map((s, idx) =>
+        idx === i ? { ...s, points: s.points.map((p, pidx) => (pidx === pi ? text : p)) } : s,
+      ),
+    );
+  const removePoint = (i: number, pi: number) =>
+    setSubSlots((prev) =>
+      prev.map((s, idx) => (idx === i ? { ...s, points: s.points.filter((_, pidx) => pidx !== pi) } : s)),
+    );
 
   // Visible meetings: live ones always, archived ones gated on the toggle.
   const visibleMeetings = showArchived
@@ -452,31 +483,64 @@ export function HorizontalView({
                           {isEditingAgenda ? (
                             <div className="sub-edit">
                               <div className="title">{a.item}</div>
-                              {subSlots.map((v, i) => (
-                                <div key={i} className="sub-edit-row">
-                                  <span className="sub-num">{i + 1}.</span>
-                                  <input
-                                    autoFocus={i === 0}
-                                    className="sub-edit-input"
-                                    placeholder={`Sub-item ${i + 1}${i === 0 ? ' (optional)' : ''}`}
-                                    value={v}
-                                    onChange={(e) =>
-                                      setSubSlots((prev) => prev.map((s, idx) => (idx === i ? e.target.value : s)))
-                                    }
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) saveEditAgenda();
-                                      if (e.key === 'Escape') cancelEditAgenda();
-                                    }}
-                                  />
-                                  {subSlots.length > 1 && (
+                              {subSlots.map((slot, i) => (
+                                <div key={i} className="sub-edit-block">
+                                  <div className="sub-edit-row">
+                                    <span className="sub-num">{i + 1}.</span>
+                                    <input
+                                      autoFocus={i === 0}
+                                      className="sub-edit-input"
+                                      placeholder={`Sub-item ${i + 1}${i === 0 ? ' (optional)' : ''}`}
+                                      value={slot.text}
+                                      onChange={(e) => updateSubText(i, e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) saveEditAgenda();
+                                        if (e.key === 'Escape') cancelEditAgenda();
+                                      }}
+                                    />
+                                    {subSlots.length > 1 && (
+                                      <button
+                                        type="button"
+                                        className="sub-remove"
+                                        onClick={() => removeSubSlot(i)}
+                                        title="Remove this sub-item"
+                                        aria-label="Remove sub-item"
+                                      >
+                                        ×
+                                      </button>
+                                    )}
+                                  </div>
+                                  {slot.points.map((p, pi) => (
+                                    <div key={pi} className="sub-edit-row sub-edit-point">
+                                      <span className="point-letter">{String.fromCharCode(97 + pi)}.</span>
+                                      <input
+                                        className="sub-edit-input"
+                                        placeholder="Discussion point"
+                                        value={p}
+                                        onChange={(e) => updatePoint(i, pi, e.target.value)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) saveEditAgenda();
+                                          if (e.key === 'Escape') cancelEditAgenda();
+                                        }}
+                                      />
+                                      <button
+                                        type="button"
+                                        className="sub-remove"
+                                        onClick={() => removePoint(i, pi)}
+                                        title="Remove this discussion point"
+                                        aria-label="Remove discussion point"
+                                      >
+                                        ×
+                                      </button>
+                                    </div>
+                                  ))}
+                                  {slot.text.trim().length > 0 && (
                                     <button
                                       type="button"
-                                      className="sub-remove"
-                                      onClick={() => removeSubSlot(i)}
-                                      title="Remove this sub-item"
-                                      aria-label="Remove sub-item"
+                                      className="point-add-btn"
+                                      onClick={() => addPoint(i)}
                                     >
-                                      ×
+                                      + Add discussion point
                                     </button>
                                   )}
                                 </div>
@@ -513,7 +577,16 @@ export function HorizontalView({
                               {subs.length > 0 && (
                                 <ol className="sub-list">
                                   {subs.map((s, i) => (
-                                    <li key={i}>{s}</li>
+                                    <li key={i}>
+                                      <span>{s.text}</span>
+                                      {s.points && s.points.length > 0 && (
+                                        <ol className="point-list">
+                                          {s.points.map((p, pi) => (
+                                            <li key={pi}>{p}</li>
+                                          ))}
+                                        </ol>
+                                      )}
+                                    </li>
                                   ))}
                                 </ol>
                               )}

@@ -26,6 +26,7 @@ import type {
   MeetingSeries,
   Page,
   Section,
+  SubItem,
   TeamMember,
   TweaksSettings,
 } from '@/lib/types';
@@ -312,12 +313,12 @@ export function AppShell({
 
   const onAddAgenda = async (item: string) => {
     const maxOrder = seriesAgenda.reduce((m, a) => Math.max(m, a.sort_order), 0);
-    const row = { series_id: seriesId, item, sort_order: maxOrder + 1, sub_items: [] as string[] };
+    const row = { series_id: seriesId, item, sort_order: maxOrder + 1, sub_items: [] as SubItem[] };
     const { data, error } = await supabase.from('agenda_items').insert(row).select().single();
     if (!error && data) setAgenda((prev) => [...prev, data as AgendaItem]);
   };
 
-  const onUpdateAgenda = async (id: string, patch: { sub_items: string[] }) => {
+  const onUpdateAgenda = async (id: string, patch: { sub_items: SubItem[] }) => {
     const before = agenda.find((a) => a.id === id);
     setAgenda((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)));
     const { error } = await supabase.from('agenda_items').update(patch).eq('id', id);
@@ -548,7 +549,7 @@ export function AppShell({
       series_id: (seriesRow as MeetingSeries).id,
       item: a.item,
       sort_order: a.sort_order,
-      sub_items: [] as string[],
+      sub_items: [] as SubItem[],
     }));
     const { data: agendaRows, error: agendaErr } = await supabase
       .from('agenda_items')
