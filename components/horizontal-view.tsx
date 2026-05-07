@@ -576,18 +576,50 @@ export function HorizontalView({
                               >
                                 + Add another
                               </button>
-                              <div className="sub-edit-actions">
-                                <button
-                                  className="btn sm ghost agenda-delete-btn"
-                                  onClick={deleteEditingAgenda}
-                                  title="Delete this agenda item permanently"
-                                >
-                                  Delete agenda item
-                                </button>
-                                <span style={{ flex: 1 }} />
-                                <button className="btn sm ghost" onClick={cancelEditAgenda}>Cancel</button>
-                                <button className="btn sm primary" onClick={saveEditAgenda}>Done</button>
-                              </div>
+                              {copyPickerOpen ? (
+                                <div className="sub-edit-actions copy-picker-row">
+                                  <span className="copy-picker-label">Copy to:</span>
+                                  {data.series.map((s) => (
+                                    <button
+                                      key={s.id}
+                                      className="btn sm ghost"
+                                      disabled={copyBusy}
+                                      onClick={() => handleCopyToSeries(s.id)}
+                                      title={`Copy this agenda item (with sub-items and discussion points) into ${s.name}`}
+                                    >
+                                      {s.name}
+                                    </button>
+                                  ))}
+                                  <span style={{ flex: 1 }} />
+                                  <button
+                                    className="btn sm ghost"
+                                    onClick={() => setCopyPickerOpen(false)}
+                                    disabled={copyBusy}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="sub-edit-actions">
+                                  <button
+                                    className="btn sm ghost agenda-delete-btn"
+                                    onClick={deleteEditingAgenda}
+                                    title="Delete this agenda item permanently"
+                                  >
+                                    Delete agenda item
+                                  </button>
+                                  <button
+                                    className="btn sm ghost"
+                                    onClick={() => setCopyPickerOpen(true)}
+                                    title="Duplicate this agenda item (with sub-items and discussion points) into another series"
+                                  >
+                                    Copy to series…
+                                  </button>
+                                  <span style={{ flex: 1 }} />
+                                  <button className="btn sm ghost" onClick={cancelEditAgenda}>Cancel</button>
+                                  <button className="btn sm primary" onClick={saveEditAgenda}>Done</button>
+                                </div>
+                              )}
                             </div>
                           ) : (
                             <button
