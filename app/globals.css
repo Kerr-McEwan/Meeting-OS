@@ -1602,13 +1602,13 @@ table.pivot tbody td.tri-cell.archived-col {
   font-size: 11px;
   color: var(--text-muted);
 }
-.sub-list li {
+.sub-list > li {
   counter-increment: sub;
   padding: 1px 0 1px 18px;
   position: relative;
   line-height: 1.35;
 }
-.sub-list li::before {
+.sub-list > li::before {
   content: counter(sub) ".";
   position: absolute;
   left: 2px;
