@@ -318,7 +318,46 @@ export function AppShell({
     if (!error && data) setAgenda((prev) => [...prev, data as AgendaItem]);
   };
 
-  const onUpdateAgenda = async (id: string, patch: { sub_items: SubItem[] }) => {
+    // Copy an agenda item (with all sub-items and discussion points) into a
+  // target series. Target may be the same series — in that case it acts as
+  // an in-place duplicate appended to the bottom. Returns the new item, or
+  // null on failure.
+  const onCopyAgenda = async (
+    sourceId: string,
+    targetSeriesId: string,
+  ): Promise<AgendaItem | null> => {
+    const source = agenda.find((a) => a.id === sourceId);
+    if (!source) return null;
+    // Sort order = max + 1 within the *target* series.
+    const targetMax = agenda
+      .filter((a) => a.series_id === targetSeriesId)
+      .reduce((m, a) => Math.max(m, a.sort_order), 0);
+    // Deep-clone sub_items so the copy doesn't share references with the
+    // source (mutating one mustn't bleed into the other).
+    const clonedSubs: SubItem[] = (source.sub_items || []).map((s) => ({
+      text: s.text,
+      points: [...(s.points || [])],
+    }));
+    const row = {
+      series_id: targetSeriesId,
+      item: source.item,
+      sort_order: targetMax + 1,
+      sub_items: clonedSubs,
+    };
+    const { data, error } = await supabase
+      .from('agenda_items')
+      .insert(row)
+      .select()
+      .single();
+    if (error || !data) {
+      console.error('[onCopyAgenda]', error);
+      return null;
+    }
+    setAgenda((prev) => [...prev, data as AgendaItem]);
+    return data as AgendaItem;
+  };
+
+const onUpdateAgenda = async (id: string, patch: { sub_items: SubItem[] }) => {
     const before = agenda.find((a) => a.id === id);
     setAgenda((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)));
     const { error } = await supabase.from('agenda_items').update(patch).eq('id', id);
@@ -625,6 +664,7 @@ export function AppShell({
               onAddAgenda={onAddAgenda}
               onUpdateAgenda={onUpdateAgenda}
               onDeleteAgenda={onDeleteAgenda}
+              onCopyAgenda={onCopyAgenda}
               onAddMeeting={onAddMeeting}
               onEditMeeting={setEditingMeetingId}
             />
