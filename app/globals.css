@@ -2018,6 +2018,25 @@ table.pivot tbody td.tri-cell.archived-col {
   background: var(--danger-soft);
 }
 
+/* "Copy to series…" picker row in the agenda editor footer. Replaces the
+   normal action row when active; flexes onto multiple lines if there are
+   lots of series. */
+.copy-picker-row {
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.copy-picker-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-right: 2px;
+}
+.copy-picker-row .btn[disabled] {
+  opacity: 0.55;
+  cursor: progress;
+}
+
 /* Discussion points (a, b, c…) under each sub-item */
 .point-list {
   list-style-type: lower-alpha;
