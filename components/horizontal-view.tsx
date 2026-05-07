@@ -183,6 +183,7 @@ interface HorizontalViewProps {
   onAddAgenda: (item: string) => void;
   onUpdateAgenda: (id: string, patch: { sub_items: SubItem[] }) => Promise<void>;
   onDeleteAgenda: (id: string) => Promise<void>;
+  onCopyAgenda: (sourceId: string, targetSeriesId: string) => Promise<AgendaItem | null>;
   onAddMeeting: (date: string) => Promise<Meeting | null>;
   onEditMeeting: (meetingId: string) => void;
 }
@@ -201,6 +202,7 @@ export function HorizontalView({
   onAddAgenda,
   onUpdateAgenda,
   onDeleteAgenda,
+  onCopyAgenda,
   onAddMeeting,
   onEditMeeting,
 }: HorizontalViewProps) {
@@ -210,7 +212,13 @@ export function HorizontalView({
   const [showArchived, setShowArchived] = useState(false);
   const [addingMeeting, setAddingMeeting] = useState(false);
 
-  // Sub-item editor state. Slot count is dynamic — starts at max(existing, 4)
+    // When the user clicks "Copy to series…" in the agenda editor footer, the
+  // action row morphs into a series picker. Tracked here so it auto-resets
+  // when the editor closes.
+  const [copyPickerOpen, setCopyPickerOpen] = useState(false);
+  const [copyBusy, setCopyBusy] = useState(false);
+
+// Sub-item editor state. Slot count is dynamic — starts at max(existing, 4)
   // and grows on demand. Each slot can have its own list of discussion points.
   const [editingAgendaId, setEditingAgendaId] = useState<string | null>(null);
   const [subSlots, setSubSlots] = useState<SubItem[]>([
@@ -236,6 +244,21 @@ export function HorizontalView({
   const cancelEditAgenda = () => {
     setEditingAgendaId(null);
     setSubSlots(emptySubSlots(4));
+    setCopyPickerOpen(false);
+    setCopyBusy(false);
+  };
+  const handleCopyToSeries = async (targetSeriesId: string) => {
+    if (!editingAgendaId || copyBusy) return;
+    setCopyBusy(true);
+    const targetName =
+      data.series.find((s) => s.id === targetSeriesId)?.name || 'series';
+    const result = await onCopyAgenda(editingAgendaId, targetSeriesId);
+    setCopyBusy(false);
+    if (!result) {
+      window.alert(`Couldn't copy to ${targetName}. Try again or refresh.`);
+      return;
+    }
+    cancelEditAgenda();
   };
   const saveEditAgenda = async () => {
     if (!editingAgendaId) return;
