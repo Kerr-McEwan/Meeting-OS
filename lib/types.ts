@@ -116,6 +116,7 @@ export interface MeetingSeries {
   cadence: string | null;
   description: string | null;
   color_accent: string | null;
+  archived_at?: string | null;
 }
 
 export interface InitialData {

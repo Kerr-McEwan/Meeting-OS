@@ -8,6 +8,7 @@ import { CellDrawer, type CellDrawerHandlers } from './cell-drawer';
 import { ActionLog } from './action-log';
 import { DecisionLog } from './decision-log';
 import { NewSeriesModal, type NewSeriesInput } from './new-series-modal';
+import { SeriesEditModal, type SeriesEditPatch } from './series-edit-modal';
 import { MeetingEditModal, type MeetingEditPatch } from './meeting-edit-modal';
 import { IssueMinutesModal } from './issue-minutes-modal';
 import { TweaksPanel, applySettings } from './tweaks-panel';
@@ -87,6 +88,10 @@ export function AppShell({
   const [issuingMinutesId, setIssuingMinutesId] = useState<string | null>(null);
   const issuingMinutesMeeting = issuingMinutesId
     ? meetings.find((m) => m.id === issuingMinutesId) || null
+    : null;
+  const [editingSeriesId, setEditingSeriesId] = useState<string | null>(null);
+  const editingSeries = editingSeriesId
+    ? seriesList.find((s) => s.id === editingSeriesId) || null
     : null;
 
   const [settings, setSettings] = useState<TweaksSettings>(() => {
@@ -546,6 +551,47 @@ const onUpdateAgenda = async (id: string, patch: { sub_items: SubItem[] }) => {
     );
   };
 
+  const onUpdateSeries = async (id: string, patch: SeriesEditPatch) => {
+    const before = seriesList.find((s) => s.id === id);
+    setSeriesList((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+    const { error } = await supabase.from('meeting_series').update(patch).eq('id', id);
+    if (error) {
+      console.error('[onUpdateSeries]', error);
+      if (before) setSeriesList((prev) => prev.map((s) => (s.id === id ? before : s)));
+      window.alert(`Couldn't save: ${error.message}`);
+    }
+  };
+
+  const onArchiveSeries = async (id: string) => {
+    const stamp = new Date().toISOString();
+    setSeriesList((prev) => prev.map((s) => (s.id === id ? { ...s, archived_at: stamp } : s)));
+    // If the archived series was the active one, switch to another live series.
+    if (seriesId === id) {
+      const next = seriesList.find((s) => s.id !== id && !s.archived_at);
+      if (next) setSeriesId(next.id);
+    }
+    const { error } = await supabase
+      .from('meeting_series')
+      .update({ archived_at: stamp })
+      .eq('id', id);
+    if (error) {
+      console.error('[onArchiveSeries]', error);
+      window.alert(`Couldn't archive series: ${error.message}`);
+    }
+  };
+
+  const onRestoreSeries = async (id: string) => {
+    setSeriesList((prev) => prev.map((s) => (s.id === id ? { ...s, archived_at: null } : s)));
+    const { error } = await supabase
+      .from('meeting_series')
+      .update({ archived_at: null })
+      .eq('id', id);
+    if (error) {
+      console.error('[onRestoreSeries]', error);
+      window.alert(`Couldn't restore series: ${error.message}`);
+    }
+  };
+
   const onCreateSeries = async (input: NewSeriesInput) => {
     const { data: seriesRow, error: seriesErr } = await supabase
       .from('meeting_series')
@@ -629,6 +675,7 @@ const onUpdateAgenda = async (id: string, patch: { sub_items: SubItem[] }) => {
                   value={seriesId}
                   onChange={setSeriesId}
                   onCreate={() => setNewSeriesOpen(true)}
+                  onEdit={(id) => setEditingSeriesId(id)}
                 />
               ) : (
                 <h2 className="page-title">{pageMeta[page].title}</h2>
@@ -714,6 +761,21 @@ const onUpdateAgenda = async (id: string, patch: { sub_items: SubItem[] }) => {
         open={newSeriesOpen}
         onClose={() => setNewSeriesOpen(false)}
         onCreate={onCreateSeries}
+      />
+
+      <SeriesEditModal
+        open={!!editingSeries}
+        series={editingSeries}
+        onClose={() => setEditingSeriesId(null)}
+        onSave={(patch) => onUpdateSeries(editingSeries!.id, patch)}
+        onArchive={async () => {
+          if (!editingSeries) return;
+          await onArchiveSeries(editingSeries.id);
+        }}
+        onRestore={async () => {
+          if (!editingSeries) return;
+          await onRestoreSeries(editingSeries.id);
+        }}
       />
 
       <MeetingEditModal

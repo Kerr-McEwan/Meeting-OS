@@ -153,15 +153,22 @@ export function SeriesPicker({
   value,
   onChange,
   onCreate,
+  onEdit,
 }: {
   series: MeetingSeries[];
   value: string;
   onChange: (id: string) => void;
   onCreate?: () => void;
+  onEdit?: (seriesId: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
   const current = series.find((s) => s.id === value) || series[0];
+
+  const live = series.filter((s) => !s.archived_at);
+  const archived = series.filter((s) => !!s.archived_at);
+
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
@@ -172,6 +179,41 @@ export function SeriesPicker({
   }, [open]);
 
   if (!current) return null;
+
+  const renderItem = (s: MeetingSeries) => (
+    <div key={s.id} className={`series-menu-row ${s.archived_at ? 'archived' : ''}`}>
+      <button
+        type="button"
+        className={`series-menu-item ${s.id === value ? 'selected' : ''}`}
+        onClick={() => { onChange(s.id); setOpen(false); }}
+      >
+        <span className="series-dot" style={{ background: s.color_accent || 'var(--accent)' }} />
+        <div className="series-menu-text">
+          <div className="series-menu-name">
+            {s.name}
+            {s.archived_at && <span className="series-archived-tag">Archived</span>}
+          </div>
+          <div className="series-menu-cad">{s.cadence || '—'}</div>
+        </div>
+        {s.id === value && (
+          <svg width="14" height="14" viewBox="0 0 12 12" aria-hidden="true" style={{ marginLeft: 'auto', color: 'var(--accent)' }}>
+            <path d="M2.5 6.5l2.5 2.5 4.5-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
+      </button>
+      {onEdit && (
+        <button
+          type="button"
+          className="series-menu-edit"
+          onClick={(e) => { e.stopPropagation(); setOpen(false); onEdit(s.id); }}
+          title="Edit series settings"
+          aria-label="Edit series"
+        >
+          <Icon name="edit" className="ic sm" />
+        </button>
+      )}
+    </div>
+  );
 
   return (
     <div className="series-picker" ref={ref}>
@@ -185,25 +227,22 @@ export function SeriesPicker({
       {open && (
         <div className="series-menu" role="listbox">
           <div className="series-menu-label">Switch meeting series</div>
-          {series.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              className={`series-menu-item ${s.id === value ? 'selected' : ''}`}
-              onClick={() => { onChange(s.id); setOpen(false); }}
-            >
-              <span className="series-dot" style={{ background: s.color_accent || 'var(--accent)' }} />
-              <div className="series-menu-text">
-                <div className="series-menu-name">{s.name}</div>
-                <div className="series-menu-cad">{s.cadence || '—'}</div>
-              </div>
-              {s.id === value && (
-                <svg width="14" height="14" viewBox="0 0 12 12" aria-hidden="true" style={{ marginLeft: 'auto', color: 'var(--accent)' }}>
-                  <path d="M2.5 6.5l2.5 2.5 4.5-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              )}
-            </button>
-          ))}
+          {live.map(renderItem)}
+
+          {archived.length > 0 && (
+            <>
+              <div className="series-menu-divider" />
+              <button
+                type="button"
+                className="series-menu-toggle"
+                onClick={() => setShowArchived((v) => !v)}
+              >
+                {showArchived ? 'Hide archived' : `Show archived (${archived.length})`}
+              </button>
+              {showArchived && archived.map(renderItem)}
+            </>
+          )}
+
           {onCreate && (
             <>
               <div className="series-menu-divider" />
